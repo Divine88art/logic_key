@@ -1,12 +1,16 @@
 {
+  "id": "./",
   "name": "Emploi du temps – Terminale F3",
   "short_name": "Mon EDT",
+  "description": "Emploi du temps, suivi des devoirs avec photos et rappels, suivi des notes semestrielles et recommandations personnalisées pour la Terminale F3.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
+  "orientation": "any",
   "background_color": "#f6f4ef",
   "theme_color": "#F5B301",
   "lang": "fr",
+  "categories": ["education", "productivity"],
   "icons": [
     {
       "src": "icons/icon-192.png",

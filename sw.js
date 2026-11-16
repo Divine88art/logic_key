@@ -1,7 +1,9 @@
-const CACHE_NAME = "edt-v6";
+const CACHE_NAME = "edt-v7";
 const ASSETS = [
   "./",
   "./index.html",
+  "./style.css",
+  "./script.js",
   "./manifest.webmanifest",
   "./icons/icon-192.png",
   "./icons/icon-512.png"
