@@ -1,0 +1,1174 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#F5B301">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<title>Emploi du temps – Terminale F3</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);--bg:#f6f4ef;--card:#fff;--tx:#1d2330;--mu:#6b7280;--line:#0000001a;--h:52px}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f121a;--card:#1a1f2b;--tx:#eef0f5;--mu:#9aa3b2;--line:#ffffff1a}}
+:root[data-theme="dark"]{--bg:#0f121a;--card:#1a1f2b;--tx:#eef0f5;--mu:#9aa3b2;--line:#ffffff1a}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:16px 12px 40px;min-height:100vh}
+.bg i{position:fixed;width:55vmax;height:55vmax;border-radius:50%;filter:blur(90px);opacity:.22;z-index:-1;animation:drift 22s ease-in-out infinite alternate}
+.bg i:nth-child(1){background:#F5B301;top:-20vmax;left:-15vmax}
+.bg i:nth-child(2){background:#7C5CBF;bottom:-25vmax;right:-15vmax;animation-delay:-8s}
+.bg i:nth-child(3){background:#1AA6B7;top:30vh;left:35vw;animation-delay:-14s}
+header{text-align:center;position:relative;max-width:1150px;margin:0 auto 12px}
+h1{margin:0;font-size:clamp(1.3rem,4vw,2.1rem)}
+.g{background:linear-gradient(90deg,#F5B301,#E8590C,#D6478B,#7C5CBF,#1AA6B7,#F5B301);background-size:300% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:flow 9s linear infinite}
+.sub{margin:3px 0 0;color:var(--mu);font-size:.9rem}
+.tools{position:absolute;right:0;top:0;display:flex;gap:6px}
+.tools button{border:0;background:var(--card);color:var(--tx);border-radius:99px;width:38px;height:38px;font-size:1.1rem;cursor:pointer;box-shadow:0 2px 8px #0002}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+
+/* Navigation principale */
+.appnav{display:flex;justify-content:center;gap:8px;max-width:1150px;margin:0 auto 14px;flex-wrap:wrap}
+.appnav button{border:1px solid var(--line);background:var(--card);color:var(--tx);border-radius:999px;padding:10px 16px;font-weight:750;cursor:pointer;min-height:42px}
+.appnav button[aria-pressed="true"]{background:#F5B301;color:#3a2a00;border-color:#F5B301}
+
+/* Emploi du temps */
+.hero{max-width:1150px;margin:0 auto 14px;border-radius:24px;padding:18px 20px;display:flex;align-items:center;gap:18px;position:relative;overflow:hidden;box-shadow:0 8px 28px #0003}
+.hero::after{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 35%,#ffffff40 50%,transparent 65%);transform:translateX(-120%);animation:shine 6s ease-in-out infinite}
+.hero .big{font-size:clamp(2.6rem,9vw,4.2rem);flex:none;animation:bob 3s ease-in-out infinite}
+.hero .lab{font-size:.72rem;letter-spacing:.14em;font-weight:700;opacity:.85;display:flex;align-items:center;gap:6px}
+.dot{width:8px;height:8px;border-radius:50%;background:currentColor;animation:pulse 1.2s ease-in-out infinite}
+.hero h2{margin:2px 0;font-size:clamp(1.3rem,4.5vw,2rem)}
+.hero p{margin:0;font-size:.92rem;opacity:.92}
+.pb{height:8px;border-radius:9px;background:#00000033;margin-top:10px;overflow:hidden;width:min(420px,100%)}
+.pb div{height:100%;background:#fff;border-radius:9px;transition:width 1s}
+.hero .grow{flex:1;min-width:0}
+#tabs{display:none;gap:6px;justify-content:center;margin-bottom:10px}
+#tabs button{border:0;border-radius:99px;padding:7px 12px;font-weight:700;background:var(--card);color:var(--tx);cursor:pointer}
+#tabs button.on{background:#F5B301;color:#3a2a00}
+.tl{display:grid;grid-template-columns:40px repeat(5,1fr);max-width:1150px;margin:0 auto;background:var(--card);border-radius:22px;padding:10px 8px 8px;box-shadow:0 2px 12px #0002}
+.dh{text-align:center;font-weight:700;font-size:.9rem;padding:4px 0 8px}
+.dh.today{color:#F5B301}
+.gut .hl{height:var(--h);font-size:.7rem;color:var(--mu);transform:translateY(-6px)}
+.col,.gut{position:relative;height:calc(var(--rows,12)*var(--h))}
+.col{border-left:1px dashed var(--line);background-image:linear-gradient(var(--line) 1px,transparent 1px);background-size:100% var(--h)}
+.col.today{background-color:#F5B3010f}
+.now{position:absolute;left:-4px;right:0;height:2px;background:#ef4444;z-index:5;box-shadow:0 0 8px #ef4444}
+.now::before{content:"";position:absolute;left:0;top:-4px;width:10px;height:10px;border-radius:50%;background:#ef4444}
+.b{position:absolute;left:3px;right:3px;border-radius:13px;padding:6px 8px;display:flex;gap:7px;align-items:flex-start;overflow:hidden;cursor:pointer;background:var(--c);color:var(--f);opacity:0;transform:translateY(14px) scale(.96);animation:up .55s cubic-bezier(.2,.9,.3,1.2) forwards;transition:transform .2s,box-shadow .2s;z-index:1}
+.b:hover{transform:scale(1.04);z-index:3;box-shadow:0 8px 20px #0004}
+.b::after{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 35%,#ffffff40 50%,transparent 65%);transform:translateX(-120%);animation:shine 6s ease-in-out infinite;animation-delay:inherit}
+.b.free{background:transparent;border:2px dashed var(--mu);color:var(--mu)}
+.b.free::after{display:none}
+.ic{font-size:1.5rem;flex:none;display:inline-block}
+.t{line-height:1.15;min-width:0;position:relative}
+.t b{display:block;font-size:.85rem}
+.t span{font-size:.72rem;opacity:.85}
+.subbadge{display:inline-flex;align-items:center;margin-top:4px;padding:2px 6px;border-radius:99px;background:#fff;color:#7f1d1d;font-size:.65rem;font-weight:800;line-height:1.2;box-shadow:0 1px 4px #0002}
+.subbadge.none{background:#ffffff30;color:inherit}
+.next-subject{display:block;font-size:.66rem!important;margin-top:3px;opacity:.9}
+.legend{max-width:1150px;margin:18px auto 0;display:flex;flex-wrap:wrap;gap:7px;justify-content:center}
+.chip{padding:5px 11px;border-radius:99px;font-size:.78rem;font-weight:600}
+.burst{position:fixed;pointer-events:none;font-size:1.5rem;z-index:99;animation:burst .9s ease-out forwards}
+.bob{animation:bob 2.4s ease-in-out infinite}
+.spin{animation:spin 6s linear infinite}
+.wig{animation:wig 2s ease-in-out infinite}
+.pulse{animation:pulse 1.4s ease-in-out infinite}
+
+@keyframes up{to{opacity:1;transform:none}}
+@keyframes shine{0%,60%{transform:translateX(-120%)}100%{transform:translateX(120%)}}
+@keyframes bob{50%{transform:translateY(-6px)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes wig{25%{transform:rotate(-14deg)}75%{transform:rotate(14deg)}}
+@keyframes pulse{50%{transform:scale(1.25)}}
+@keyframes flow{to{background-position:300% 0}}
+@keyframes drift{to{transform:translate(12vw,10vh) scale(1.2)}}
+@keyframes burst{to{transform:translate(var(--dx),var(--dy)) rotate(var(--r)) scale(.4);opacity:0}}
+
+/* Modales */
+dialog{border:0;border-radius:20px;padding:18px;background:var(--card);color:var(--tx);width:min(430px,92vw);box-shadow:0 20px 60px #0007}
+dialog::backdrop{background:#0008;backdrop-filter:blur(3px)}
+dialog h3{margin:0 0 4px}
+dialog label{display:block;font-size:.8rem;color:var(--mu);margin:10px 0 3px}
+dialog select,dialog input{width:100%;padding:9px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--tx);font-size:1rem}
+.two{display:flex;gap:8px}
+.two>div{flex:1}
+.btns{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
+.btns button{flex:1;border:0;border-radius:12px;padding:10px;font-weight:700;cursor:pointer;background:#F5B301;color:#3a2a00;font-size:.95rem}
+.btns .gh{background:var(--bg);color:var(--tx)}
+.btns .dg{background:#ef4444;color:#fff}
+.er{color:#ef4444;font-size:.85rem;min-height:1em;margin:8px 0 0}
+#ml{max-height:50vh;overflow:auto;margin-top:10px}
+.mr{display:flex;gap:6px;margin-bottom:8px;align-items:center}
+.mr .me{width:56px;text-align:center;min-height:40px}
+.mr .mc{width:48px;padding:2px;height:40px;flex:none}
+.mr .mx{border:0;background:none;font-size:1.1rem;cursor:pointer;flex:none;min-width:36px;min-height:36px}
+
+/* Module devoirs */
+#homeworkView,#gradesView,#recommendView{max-width:1000px;margin:0 auto}
+.hwreminders{display:flex;align-items:center;justify-content:space-between;gap:14px;margin:0 0 14px;padding:15px;background:var(--card);border:1px solid var(--line);border-radius:17px}
+.hwreminder-copy{min-width:0}
+.hwreminders h3{font-size:1rem;margin:0 0 5px}
+.hwreminders p{margin:4px 0;color:var(--mu);font-size:.85rem}
+.hwreminder-note{max-width:720px}
+.hwreminder-actions{display:flex;flex-wrap:wrap;gap:7px;flex-shrink:0}
+.hwreminder-actions button{min-height:40px;border:0;border-radius:10px;padding:9px 12px;background:#F5B301;color:#3a2a00;font-weight:750;cursor:pointer}
+.hwreminder-actions button.gh{border:1px solid var(--line);background:var(--bg);color:var(--tx)}
+.hwreminder-actions button:disabled{opacity:.55;cursor:not-allowed}
+.hwhead{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:8px 0 14px}
+.hwhead h2{margin:0;font-size:1.35rem}
+.hwadd{border:0;border-radius:12px;padding:11px 15px;background:#F5B301;color:#3a2a00;font-weight:800;cursor:pointer;min-height:44px;white-space:nowrap}
+.hwfilters{display:flex;gap:7px;overflow-x:auto;padding:2px 0 10px;scrollbar-width:none}
+.hwfilters button{flex:none;border:1px solid var(--line);border-radius:999px;background:var(--card);color:var(--tx);padding:8px 13px;min-height:40px;font-weight:650;cursor:pointer}
+.hwfilters button.on{background:var(--tx);color:var(--bg)}
+.hwtools{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(180px,1fr);gap:10px;margin:4px 0 14px}
+.hwtools input,.hwtools select{width:100%;min-width:0;border:1px solid var(--line);border-radius:12px;padding:11px 13px;background:var(--card);color:var(--tx);font:inherit}
+.hwtools input:focus,.hwtools select:focus{outline:2px solid #F5B301;outline-offset:2px}
+.hwstats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:5px 0 14px}
+.hwstat{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px;min-width:0}
+.hwstat strong{display:block;font-size:1.45rem;line-height:1.2}
+.hwstat span{font-size:.78rem;color:var(--mu)}
+.hwlist{display:grid;gap:10px}
+.hwcard{background:var(--card);border:1px solid var(--line);border-radius:17px;padding:14px;display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:11px;align-items:start;box-shadow:0 2px 10px #00000008;transition:transform .16s ease,box-shadow .16s ease}
+.hwcard:hover{transform:translateY(-2px)}
+.hwcheck{width:23px;height:23px;margin-top:3px;accent-color:#F5B301;cursor:pointer}
+.hwtitle{font-weight:800;overflow-wrap:anywhere}
+.hwmeta{display:flex;gap:6px 9px;flex-wrap:wrap;color:var(--mu);font-size:.82rem;margin-top:5px}
+.hwtag{display:inline-flex;align-items:center;border-radius:999px;padding:3px 8px;font-size:.72rem;font-weight:750;background:var(--bg);color:var(--tx)}
+.hwtag.high{background:#fee2e2;color:#991b1b}
+.hwtag.medium{background:#fef3c7;color:#92400e}
+.hwtag.low{background:#dbeafe;color:#1e40af}
+.hwtag.overdue{background:#ef4444;color:#fff}
+.hwtag.done{background:#dcfce7;color:#166534}
+.hwdesc{font-size:.88rem;margin-top:8px;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--mu)}
+.hwphoto{display:block;max-width:100%;max-height:220px;object-fit:contain;border-radius:12px;margin-top:8px;border:1px solid var(--line);cursor:zoom-in}
+.hwphoto-input{display:block;width:100%;padding:10px;border:1px dashed var(--line);border-radius:12px;background:var(--bg);color:var(--tx)}
+.hwphoto-preview{max-width:100%;max-height:220px;object-fit:contain;border-radius:12px;margin-top:8px;display:none}
+.hwphoto-note{font-size:.78rem;color:var(--mu);margin:4px 0}
+.hwphoto-rm{margin-top:8px;border:1px solid var(--line);background:var(--bg);color:var(--tx);border-radius:10px;padding:8px 12px;font-weight:650;cursor:pointer}
+.hwacts{display:flex;gap:5px}
+.hwacts button{border:1px solid var(--line);background:var(--bg);color:var(--tx);border-radius:10px;min-width:38px;min-height:38px;cursor:pointer}
+.hwempty{padding:28px 16px;text-align:center;background:var(--card);border:1px dashed var(--line);border-radius:17px;color:var(--mu)}
+#dH textarea{width:100%;resize:vertical;min-height:76px;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--tx);font:inherit}
+#dH select,#dH input{min-height:42px}
+
+/* Suivi des notes et recommandations */
+.grade-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:8px 0 14px}
+.grade-head h2{margin:0;font-size:1.35rem}
+.grade-actions{display:flex;gap:8px;flex-wrap:wrap}
+.grade-btn{border:0;border-radius:11px;padding:10px 14px;min-height:42px;background:#F5B301;color:#3a2a00;font-weight:800;cursor:pointer}
+.grade-btn.secondary{background:var(--card);color:var(--tx);border:1px solid var(--line)}
+.grade-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:12px 0}
+.grade-stat{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;min-width:0}
+.grade-stat strong{display:block;font-size:1.55rem}
+.grade-stat span{color:var(--mu);font-size:.82rem}
+.grade-panel{background:var(--card);border:1px solid var(--line);border-radius:17px;padding:14px;margin:12px 0;overflow:hidden}
+.grade-panel h3{margin:0 0 10px;font-size:1rem}
+.grade-table{width:100%;border-collapse:collapse;font-size:.9rem}
+.grade-table th,.grade-table td{text-align:left;padding:9px 7px;border-bottom:1px solid var(--line)}
+.grade-table th{color:var(--mu);font-size:.78rem}
+.grade-table input{width:76px;max-width:100%;padding:7px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--tx);font:inherit}
+.grade-list{display:grid;gap:8px}
+.grade-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:9px;padding:10px;border:1px solid var(--line);border-radius:12px}
+.grade-row small{display:block;color:var(--mu)}
+.grade-row button{border:1px solid var(--line);background:var(--bg);color:var(--tx);border-radius:9px;padding:7px 9px;cursor:pointer}
+.grade-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grade-form-grid label{display:block;font-size:.83rem;font-weight:700;margin-bottom:4px}
+.grade-form-grid input,.grade-form-grid select{width:100%;min-height:42px;padding:9px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--tx);font:inherit}
+.grade-empty,.rec-card{padding:13px;border-radius:12px;background:var(--bg);border:1px solid var(--line);margin:8px 0}
+.rec-card strong{display:block;margin-bottom:4px}
+.rec-card p{margin:4px 0;color:var(--mu);font-size:.9rem}
+
+/* Responsive */
+@media(max-width:720px){
+ :root{--h:64px}
+ body{padding-inline:max(10px,env(safe-area-inset-left));padding-right:max(10px,env(safe-area-inset-right))}
+ header{margin-bottom:14px}
+ .tl{grid-template-columns:42px minmax(0,1fr);padding:0 8px 10px;border-radius:20px;overflow:hidden}
+ .tl>.dh:first-child,.dh:not(.on),.col:not(.on){display:none}
+ .tl>.dh.on{display:block;grid-column:1/-1;grid-row:1;padding:11px 8px 10px;text-align:left;font-size:1rem;border-bottom:1px solid var(--line)}
+ .tl>.gut{grid-column:1;grid-row:2}
+ .tl>.col.on{display:block;grid-column:2;grid-row:2;min-width:0}
+ #tabs{display:flex;justify-content:flex-start;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;padding:2px 2px 8px;margin:0 auto 4px;max-width:100%;-webkit-overflow-scrolling:touch}
+ #tabs::-webkit-scrollbar{display:none}
+ #tabs button{flex:1 0 auto;scroll-snap-align:center;min-width:58px;min-height:44px;padding:10px 14px;box-shadow:0 2px 8px #0001}
+ .hero{padding:14px}
+ .tools{position:static;justify-content:center;margin-top:8px}
+ .tools button{width:44px;height:44px;font-size:1.2rem}
+ .b{left:5px;right:2px;padding:7px 9px}
+ .b:hover{transform:none;box-shadow:none}
+ .legend{justify-content:flex-start;flex-wrap:nowrap;overflow-x:auto;padding:2px 2px 8px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+ .legend::-webkit-scrollbar{display:none}
+ .chip{flex:none}
+ .bg i{filter:blur(60px)}
+}
+@media(max-width:620px){
+ .hwreminders{align-items:stretch;flex-direction:column}
+ .hwreminder-actions{display:grid;grid-template-columns:1fr}
+ .appnav{display:grid;grid-template-columns:1fr 1fr}
+ .appnav button{padding:9px 7px}
+ .hwstats{gap:6px}
+ .hwstat{padding:10px}
+ .hwstat strong{font-size:1.25rem}
+ .hwcard{padding:11px;gap:8px;grid-template-columns:auto minmax(0,1fr)}
+ .hwacts{grid-column:2;justify-content:flex-end}
+ .hwhead{align-items:stretch}
+ .hwadd{width:100%}
+ .hwtools{grid-template-columns:1fr}
+ .grade-summary{grid-template-columns:1fr 1fr}
+ .grade-form-grid{grid-template-columns:1fr}
+ .grade-table{font-size:.8rem}
+ .grade-table th,.grade-table td{padding:7px 4px}
+}
+@media(max-width:480px){
+ body{padding:14px 10px 32px}
+ .hero{gap:12px;border-radius:20px}
+ .hero .big{font-size:clamp(2.1rem,11vw,3rem)}
+ h1{font-size:clamp(1.15rem,5vw,1.6rem)}
+ #tabs button{min-width:62px}
+ .mr{flex-wrap:wrap;row-gap:6px}
+ .mr .me{order:0}
+ .mr .mc{order:1}
+ .mr .mx{order:2}
+ .mr .mn{order:3;flex:1 1 100%}
+ .btns button{font-size:.85rem;padding:10px 6px}
+}
+@media(prefers-reduced-motion:reduce){*,*::after,.bg i{animation:none!important;transition:none!important}.b{opacity:1;transform:none}}
+
+/* Impression */
+@page{size:A4 landscape;margin:8mm}
+@media print{
+ .bg,#hero,#tabs,.tools,dialog,.appnav,#homeworkView,#gradesView,#recommendView{display:none!important}
+ :root{padding:0;--h:30px}
+ body{background:#fff;color:#000;min-height:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+ #scheduleView{display:block!important}
+ .tl{grid-template-columns:40px repeat(5,1fr)!important;box-shadow:none}
+ .dh,.col{display:block!important}
+ .b{opacity:1!important;transform:none!important;animation:none!important}
+ .b::after{display:none}
+ .g{animation:none}
+}
+</style>
+</head>
+<body>
+<div class="bg"><i></i><i></i><i></i></div>
+<header>
+ <h1><span>📅</span> <span class="g">Mon emploi du temps</span></h1>
+ <p class="sub">Terminale F3 · Électrotechnique</p>
+ <div class="tools">
+  <button id="add" title="Ajouter un cours" aria-label="Ajouter un cours">➕</button>
+  <button id="mat" title="Gérer les matières" aria-label="Matières">🎨</button>
+  <button id="prt" title="Imprimer" aria-label="Imprimer">🖨️</button>
+  <button id="th" title="Thème" aria-label="Thème">🌗</button>
+ </div>
+</header>
+
+<nav class="appnav" aria-label="Sections de l’application">
+ <button id="navSchedule" type="button" aria-pressed="true">📅 Emploi du temps</button>
+ <button id="navHomework" type="button" aria-pressed="false">📚 Mes devoirs</button>
+ <button id="navGrades" type="button" aria-pressed="false">📊 Suivi des notes</button>
+ <button id="navRecs" type="button" aria-pressed="false">💡 Recommandations</button>
+</nav>
+
+<div id="scheduleView">
+ <div id="hero"></div>
+ <div id="tabs"></div>
+ <div class="tl" id="tl"></div>
+ <div class="legend" id="l"></div>
+</div>
+
+<section id="homeworkView" hidden aria-labelledby="hwHeading">
+ <div class="hwhead">
+  <div><h2 id="hwHeading">📚 Mes devoirs</h2><p class="sub">Tes travaux à faire, leurs échéances et ton avancement.</p></div>
+  <button class="hwadd" id="hwAdd" type="button">＋ Ajouter un devoir</button>
+ </div>
+ <div class="hwstats" id="hwStats" aria-live="polite"></div>
+ <section class="hwreminders" aria-labelledby="reminderHeading">
+  <div class="hwreminder-copy">
+   <h3 id="reminderHeading">🔔 Rappels d’échéance</h3>
+   <p id="reminderStatus" aria-live="polite">Vérification de la prise en charge des notifications…</p>
+   <p class="hwreminder-note">Horaires fixes : la veille à 18 h et le jour même à 7 h. Les rappels sont vérifiés quand l’application est ouverte. Le navigateur peut ne rien afficher si l’application est fermée ou suspendue.</p>
+  </div>
+  <div class="hwreminder-actions">
+   <button type="button" id="reminderEnable">Activer les rappels</button>
+   <button type="button" id="reminderTest" class="gh">Envoyer une notification test</button>
+  </div>
+ </section>
+ <div class="hwfilters" id="hwFilters" aria-label="Filtrer les devoirs">
+  <button type="button" data-filter="upcoming" class="on">À faire</button>
+  <button type="button" data-filter="overdue">En retard</button>
+  <button type="button" data-filter="done">Terminés</button>
+  <button type="button" data-filter="all">Tous</button>
+ </div>
+ <div class="hwtools">
+  <label class="sr-only" for="hwSearch">Rechercher un devoir</label>
+  <input id="hwSearch" type="search" placeholder="🔎 Rechercher un devoir…" autocomplete="off">
+  <label class="sr-only" for="hwSubjectFilter">Filtrer par matière</label>
+  <select id="hwSubjectFilter"><option value="">Toutes les matières</option></select>
+ </div>
+ <div class="hwlist" id="hwList" aria-live="polite"></div>
+</section>
+
+<section id="gradesView" hidden aria-labelledby="gradesHeading">
+ <div class="grade-head">
+  <div><h2 id="gradesHeading">📊 Suivi des notes</h2><p class="sub">Notes sur 20, moyennes pondérées et coefficients modifiables.</p></div>
+  <div class="grade-actions">
+   <button class="grade-btn" id="gradeAdd" type="button">＋ Ajouter une note</button>
+   <button class="grade-btn secondary" id="gradeSubjectsToggle" type="button">⚙️ Coefficients</button>
+  </div>
+ </div>
+ <div class="grade-summary" id="gradeSummary" aria-live="polite"></div>
+ <section class="grade-panel" id="gradeCoefficients" hidden>
+  <h3>Coefficients des matières</h3>
+  <p class="sub">Ces valeurs sont enregistrées sur cet appareil. Tu peux les modifier à tout moment.</p>
+  <div id="gradeCoefficientList"></div>
+  <button class="grade-btn" id="gradeCoeffSave" type="button">Enregistrer les coefficients</button>
+ </section>
+ <section class="grade-panel"><h3>Moyennes par matière</h3><div id="gradeAverages"></div></section>
+ <section class="grade-panel"><h3>Historique des évaluations</h3><div class="grade-list" id="gradeList"></div></section>
+</section>
+
+<section id="recommendView" hidden aria-labelledby="recommendHeading">
+ <div class="grade-head">
+  <div><h2 id="recommendHeading">💡 Recommandations</h2><p class="sub">Des pistes de travail calculées à partir de tes notes enregistrées.</p></div>
+ </div>
+ <div id="recommendations"></div>
+</section>
+
+<dialog id="gradeDialog">
+ <form id="gradeForm">
+  <h3 id="gradeDialogTitle">＋ Ajouter une note</h3>
+  <div class="grade-form-grid">
+   <div><label for="gradeSubject">Matière</label><select id="gradeSubject" required></select></div>
+   <div><label for="gradeValue">Note sur 20</label><input id="gradeValue" type="number" min="0" max="20" step="0.25" required></div>
+   <div><label for="gradeTitle">Évaluation</label><input id="gradeTitle" maxlength="100" placeholder="Ex. : Devoir surveillé" required></div>
+   <div><label for="gradeDate">Date</label><input id="gradeDate" type="date" required></div>
+  </div>
+  <p id="gradeError" role="alert" class="er"></p>
+  <div class="btns">
+   <button class="grade-btn" type="submit">Enregistrer</button>
+   <button class="grade-btn secondary" id="gradeCancel" type="button">Annuler</button>
+  </div>
+ </form>
+</dialog>
+
+<dialog id="dH">
+ <form id="hwForm">
+  <h3 id="hwDialogTitle">＋ Ajouter un devoir</h3>
+  <label for="hwSubject">Matière</label><select id="hwSubject" required></select>
+  <label for="hwTitle">Titre du devoir</label><input id="hwTitle" maxlength="120" required placeholder="Ex. : Exercices sur les circuits">
+  <div class="two">
+   <div><label for="hwDate">Date limite</label><input id="hwDate" type="date" required></div>
+   <div><label for="hwTime">Heure (facultative)</label><input id="hwTime" type="time"></div>
+  </div>
+  <label for="hwPriority">Priorité</label>
+  <select id="hwPriority">
+   <option value="high">🔴 Haute</option>
+   <option value="medium" selected>🟠 Normale</option>
+   <option value="low">🔵 Basse</option>
+  </select>
+  <label for="hwPhoto">Photo ou capture de l’exercice (facultatif)</label>
+  <input id="hwPhoto" class="hwphoto-input" type="file" accept="image/*" capture="environment">
+  <p class="hwphoto-note">Image compressée et conservée sur cet appareil uniquement (max. 8 Mo avant compression).</p>
+  <img id="hwPhotoPreview" class="hwphoto-preview" alt="Aperçu de la photo du devoir">
+  <button id="hwPhotoRemove" type="button" class="hwphoto-rm">Retirer la photo</button>
+  <label for="hwNotes">Consignes / notes (facultatif)</label>
+  <textarea id="hwNotes" maxlength="1000" placeholder="Pages à étudier, exercices, matériel à apporter…"></textarea>
+  <p class="er" id="hwError" role="alert"></p>
+  <div class="btns">
+   <button id="hwSave" type="submit">Enregistrer</button>
+   <button id="hwDelete" type="button" class="dg">Supprimer</button>
+   <button id="hwCancel" type="button" class="gh">Annuler</button>
+  </div>
+ </form>
+</dialog>
+
+<dialog id="dB">
+ <h3 id="bt"></h3>
+ <label for="bs">Matière</label><select id="bs"></select>
+ <label for="bd">Jour</label><select id="bd"></select>
+ <div class="two">
+  <div><label for="b1">Début</label><input type="time" id="b1" step="900"></div>
+  <div><label for="b2">Fin</label><input type="time" id="b2" step="900"></div>
+ </div>
+ <p class="er" id="be"></p>
+ <div class="btns">
+  <button id="bsv" type="button">Enregistrer</button>
+  <button id="bdl" type="button" class="dg">Supprimer</button>
+  <button id="bcx" type="button" class="gh">Annuler</button>
+ </div>
+</dialog>
+
+<dialog id="dM">
+ <h3>🎨 Mes matières</h3>
+ <p style="margin:0;color:var(--mu);font-size:.85rem">Change le nom, l'emoji ou la couleur, ajoute-en de nouvelles.</p>
+ <div id="ml"></div>
+ <div class="btns"><button id="madd" type="button" class="gh">➕ Nouvelle matière</button></div>
+ <div class="btns"><button id="mok" type="button">Terminé</button><button id="mrs" type="button" class="dg">Réinitialiser</button></div>
+</dialog>
+
+<script>
+var DEF_S={
+ elec:["Électrotechnique","⚡","#F5B301","#3a2a00","pulse"],
+ philo:["Philosophie","🦉","#7C5CBF","#fff","bob"],
+ est:["EST","🔬","#2E9E5B","#fff","bob"],
+ ang:["Anglais","🗣️","#D64550","#fff","wig"],
+ dess:["Dessin technique","📐","#1AA6B7","#00262b","wig"],
+ phy:["Physique","🧲","#3B6FE0","#fff","wig"],
+ leg:["Législation et CGE","⚖️","#B5651D","#fff","bob"],
+ tp:["TP / MEL","🔧","#E8590C","#fff","wig"],
+ math:["Mathématiques générales","➗","#4C4CCF","#fff","pulse"],
+ fr:["Français","📖","#D6478B","#fff","bob"],
+ tech:["Technologie générale","⚙️","#5B7083","#fff","spin"],
+ eps:["EPS","🏃","#7CB518","#1c2e00","bob"],
+ free:["Temps libre","🌤️","#8892a6","#fff","bob"]
+};
+var DEF_B=[
+ [1,"elec",8,13],[1,"free",14,17],[1,"philo",17,19],
+ [2,"est",7,11],[2,"ang",11,13],[2,"dess",15,19],
+ [3,"phy",7,11],[3,"leg",11,13],[3,"tp",14,18],
+ [4,"math",8,12],[4,"tp",13,19],
+ [5,"fr",8,12],[5,"tech",14,17],[5,"eps",17,19]
+];
+var DN=["Lundi","Mardi","Mercredi","Jeudi","Vendredi"],S,B,T0=7,T1=19,hk="",ed=-1;
+
+function $(i){return document.getElementById(i)}
+function reportAppError(message){
+ var msg="L’application a rencontré un problème au chargement : "+String(message||"erreur inconnue")+". Les données enregistrées ne sont pas effacées ; recharge la page ou signale ce message.";
+ var el=$("reminderStatus");if(el)el.textContent=msg;
+ var hero=$("hero");if(hero&&!hero.innerHTML)hero.innerHTML="<div class='hero' style='background:var(--card);color:var(--tx)'><div class='big'>⚠️</div><div class='grow'><h2>Erreur de chargement</h2><p>"+esc(msg)+"</p></div></div>";
+}
+window.addEventListener("error",function(ev){reportAppError(ev&&ev.message?ev.message:"Erreur JavaScript")});
+window.addEventListener("unhandledrejection",function(ev){var reason=ev&&ev.reason;reportAppError(reason&&reason.message?reason.message:reason||"Opération asynchrone impossible")});
+
+function clone(o){return JSON.parse(JSON.stringify(o))}
+function esc(t){return String(t).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/'/g,"&#39;").replace(/</g,"&lt;")}
+function fh(x){var H=Math.floor(x),M=Math.round((x-H)*60);return H+"h"+(M?(M<10?"0":"")+M:"")}
+function dur(x){var m=Math.round(x*60),j=Math.floor(m/1440),h=Math.floor(m%1440/60),n=m%60;return((j?j+" j ":"")+(h?h+" h ":"")+(n&&!j?n+" min":"")).trim()||"1 min"}
+function pad(n){return(n<10?"0":"")+n}
+function t2s(x){var h=Math.floor(x),m=Math.round((x-h)*60);return pad(h)+":"+pad(m)}
+function s2t(v){var p=String(v).split(":");return(+p[0])+(+p[1])/60}
+function fgOf(c){var r=parseInt(c.substr(1,2),16),g=parseInt(c.substr(3,2),16),b=parseInt(c.substr(5,2),16);return(0.299*r+0.587*g+0.114*b)/255>0.62?"#1d2330":"#fff"}
+
+function load(){
+ S=clone(DEF_S);B=clone(DEF_B);
+ try{
+  var raw=localStorage.getItem("edt-data"),j=raw?JSON.parse(raw):null;
+  if(j&&j.S&&typeof j.S==="object"&&!Array.isArray(j.S)){
+   var nextS={};
+   Object.keys(j.S).forEach(function(k){
+    var v=j.S[k];
+    if(Array.isArray(v)&&typeof v[0]==="string"&&typeof v[1]==="string"&&/^#[0-9a-f]{6}$/i.test(v[2]||"")&&typeof v[3]==="string"){
+     nextS[k]=[v[0],v[1],v[2],v[3],typeof v[4]==="string"?v[4]:"bob"];
+    }
+   });
+   if(Object.keys(nextS).length)S=nextS;
+  }
+  if(j&&Array.isArray(j.B)){
+   B=j.B.filter(function(b){
+    return Array.isArray(b)&&b.length>=4&&Number.isInteger(Number(b[0]))&&Number(b[0])>=1&&Number(b[0])<=5&&S[b[1]]&&Number.isFinite(Number(b[2]))&&Number.isFinite(Number(b[3]))&&Number(b[2])>=0&&Number(b[3])<=24&&Number(b[3])>Number(b[2]);
+   }).map(function(b){return [Number(b[0]),b[1],Number(b[2]),Number(b[3])]});
+  }
+ }catch(e){S=clone(DEF_S);B=clone(DEF_B)}
+}
+function save(){try{localStorage.setItem("edt-data",JSON.stringify({S:S,B:B}))}catch(e){}}
+
+var td=new Date().getDay(),sel=(td>=1&&td<=5)?td:1,tl=$("tl"),tb=$("tabs"),lg=$("l"),H=$("hero");
+var mobileQuery=window.matchMedia("(max-width: 720px)");
+function setDisplayMode(e){
+ var mobile=e.matches;
+ document.documentElement.classList.toggle("mobile",mobile);
+ document.body.dataset.display=mobile?"mobile":"desktop";
+ tb.setAttribute("aria-hidden",mobile?"false":"true");
+ if(mobile){var active=tb.querySelector(".on");if(active)requestAnimationFrame(function(){active.scrollIntoView({behavior:"smooth",block:"nearest",inline:"center"})})}
+}
+if(mobileQuery.addEventListener)mobileQuery.addEventListener("change",setDisplayMode);else mobileQuery.addListener(setDisplayMode);
+
+function burst(x,y,em){
+ for(var i=0;i<9;i++){
+  var s=document.createElement("span"),a=Math.random()*6.28,r=50+Math.random()*70;
+  s.className="burst";s.textContent=em;
+  s.style.cssText="left:"+x+"px;top:"+y+"px;--dx:"+Math.cos(a)*r+"px;--dy:"+(Math.sin(a)*r-30)+"px;--r:"+(Math.random()*360-180)+"deg";
+  document.body.appendChild(s);
+  setTimeout(function(el){return function(){el.remove()}}(s),950);
+ }
+}
+function weekdayIndex(){var d=new Date().getDay();return d===0?7:d}
+function nextClassInfo(subjectId){
+ var now=new Date(),today=weekdayIndex(),minutes=now.getHours()*60+now.getMinutes(),best=null;
+ B.forEach(function(b){
+  if(b[1]!==subjectId)return;
+  var offset=(b[0]-today+7)%7,start=b[2]*60,end=b[3]*60;
+  if(offset===0&&end<=minutes)return;
+  var ongoing=offset===0&&start<=minutes&&minutes<end;
+  var delta=ongoing?0:offset*1440+start-minutes;
+  if(delta<0)delta+=7*1440;
+  if(!best||delta<best.delta)best={delta:delta,b:b,ongoing:ongoing};
+ });
+ return best;
+}
+function countdownText(info){
+ if(!info)return"Aucun cours programmé";
+ if(info.ongoing)return"Cours en cours · fin à "+fh(info.b[3]);
+ var m=info.delta,days=Math.floor(m/1440),hours=Math.floor(m%1440/60),mins=m%60,parts=[];
+ if(days)parts.push(days+" j");
+ if(hours)parts.push(hours+" h");
+ if(!days&&mins)parts.push(mins+" min");
+ return"Prochain cours dans "+(parts.join(" ")||"moins d’une minute");
+}
+function homeworkCounts(){
+ var counts={};
+ homework.forEach(function(x){if(x.status!=="done"&&x.subjectId)counts[x.subjectId]=(counts[x.subjectId]||0)+1});
+ return counts;
+}
+
+function render(){
+ T0=7;T1=19;
+ B.forEach(function(b){T0=Math.min(T0,Math.floor(b[2]));T1=Math.max(T1,Math.ceil(b[3]))});
+ tl.style.setProperty("--rows",T1-T0);
+ var h="<div class='dh'></div>";
+ DN.forEach(function(n,i){h+="<div class='dh"+(td==i+1?" today":"")+(sel==i+1?" on":"")+"' data-d='"+(i+1)+"'>"+n+"</div>"});
+ h+="<div class='gut'>";for(var i=T0;i<T1;i++)h+="<div class='hl'>"+i+"h</div>";h+="</div>";
+ for(var d=1;d<=5;d++)h+="<div class='col"+(td==d?" today":"")+(sel==d?" on":"")+"' data-d='"+d+"'></div>";
+ tl.innerHTML=h;
+
+ var k=0,counts=homeworkCounts();
+ B.forEach(function(b,i){
+  var s=S[b[1]];if(!s)return;
+  var e=document.createElement("div");
+  e.className="b"+(b[1]=="free"?" free":"");
+  e.style.cssText="--c:"+s[2]+";--f:"+s[3]+";top:calc("+(b[2]-T0)+"*var(--h) + 2px);height:calc("+(b[3]-b[2])+"*var(--h) - 4px);animation-delay:"+(k++*0.07)+"s";
+  var count=counts[b[1]]||0,info=nextClassInfo(b[1]);
+  e.innerHTML="<span class='ic "+s[4]+"'>"+esc(s[1])+"</span><div class='t'><b>"+esc(s[0])+"</b><span>"+fh(b[2])+" – "+fh(b[3])+"</span><span class='subbadge "+(count?"":"none")+"'>"+(count?count+" devoir"+(count>1?"s":"")+" à faire":"Aucun devoir")+"</span><span class='next-subject'>"+esc(countdownText(info))+"</span></div>";
+  e.querySelector(".ic").onclick=function(ev){ev.stopPropagation();burst(ev.clientX,ev.clientY,s[1])};
+  e.onclick=function(){openB(i)};
+  tl.querySelector(".col[data-d='"+b[0]+"']").appendChild(e);
+ });
+
+ tb.innerHTML="";tb.setAttribute("role","tablist");tb.setAttribute("aria-label","Choisir le jour à afficher");
+ DN.forEach(function(n,i){
+  var x=document.createElement("button");
+  x.textContent=n.slice(0,3);x.className=sel==i+1?"on":"";
+  x.setAttribute("role","tab");x.setAttribute("aria-label",n);x.setAttribute("aria-selected",sel==i+1?"true":"false");
+  x.onclick=function(){
+   sel=i+1;
+   [].forEach.call(tb.children,function(y,j){var on=j==i;y.className=on?"on":"";y.setAttribute("aria-selected",on?"true":"false")});
+   [].forEach.call(tl.querySelectorAll(".dh[data-d],.col"),function(y){y.classList[y.dataset.d==sel?"add":"remove"]("on")});
+   if(mobileQuery.matches)x.scrollIntoView({behavior:"smooth",block:"nearest",inline:"center"});
+  };
+  tb.appendChild(x);
+ });
+
+ lg.innerHTML="";
+ Object.keys(S).forEach(function(q){
+  if(q=="free")return;
+  var s=S[q],c=document.createElement("span");
+  c.className="chip";c.style.cssText="background:"+s[2]+";color:"+s[3];
+  c.textContent=s[1]+" "+s[0];
+  lg.appendChild(c);
+ });
+ hk="";tick();
+}
+
+function tick(){
+ var Q=B.filter(function(b){return S[b[1]]});
+ if(!Q.length){
+  H.innerHTML="<div class='hero' style='background:var(--card);color:var(--tx)'><div class='big'>📅</div><div class='grow'><div class='lab'>EMPLOI DU TEMPS</div><h2>Aucun cours programmé</h2><p>Ajoute un cours avec le bouton ➕ pour commencer.</p></div></div>";
+  hk="";return;
+ }
+ var n=new Date(),d=n.getDay(),t=n.getHours()+n.getMinutes()/60,cur=null,nx=null,best=1e9;
+ Q.forEach(function(b){if(b[0]==d&&b[2]<=t&&t<b[3])cur=b});
+ if(!cur)Q.forEach(function(b){var x=((b[0]-d+7)%7)*24+b[2]-t;if(x<0)x+=168;if(x<best){best=x;nx=b}});
+ var b=cur||nx,s=S[b[1]],key=(cur?"c":"n")+b.join();
+ if(key!=hk){
+  hk=key;
+  H.innerHTML="<div class='hero' style='background:linear-gradient(135deg,"+s[2]+","+s[2]+"cc);color:"+s[3]+"'><div class='big'>"+esc(s[1])+"</div><div class='grow'><div class='lab'>"+(cur?"<span class='dot'></span>EN COURS":"À SUIVRE")+"</div><h2>"+esc(s[0])+"</h2><p id='pt'></p>"+(cur?"<div class='pb'><div id='pf'></div></div>":"")+"</div></div>";
+ }
+ var p=$("pt");
+ if(cur){p.textContent="Encore "+dur(b[3]-t)+" · fin à "+fh(b[3]);$("pf").style.width=((t-b[2])/(b[3]-b[2])*100)+"%"}
+ else{p.textContent="Dans "+dur(best)+" · "+(best>=24||b[0]!=d?DN[b[0]-1]+" ":"")+fh(b[2])+" – "+fh(b[3])}
+ var o=document.querySelector(".now");if(o)o.remove();
+ var c=tl.querySelector(".col.today");
+ if(c&&t>=T0&&t<T1){o=document.createElement("div");o.className="now";o.style.top="calc("+(t-T0)+"*var(--h))";c.appendChild(o)}
+}
+
+/* ---- Gestion des devoirs & rappels ---- */
+var HOMEWORK_KEY="edt-homework-v1",homework=[],homeworkEditId=null,homeworkFilter="upcoming";
+var REMINDER_SETTINGS_KEY="edt-homework-reminders-v1",REMINDER_SENT_KEY="edt-homework-reminders-sent-v1",reminderTimer=null,swRegistration=null,swState="checking",swError="";
+
+function readReminderSettings(){try{return JSON.parse(localStorage.getItem(REMINDER_SETTINGS_KEY)||"{}")}catch(e){return{}}}
+function saveReminderSettings(value){try{localStorage.setItem(REMINDER_SETTINGS_KEY,JSON.stringify(value));return true}catch(e){return false}}
+function readSentReminders(){try{var a=JSON.parse(localStorage.getItem(REMINDER_SENT_KEY)||"[]");return Array.isArray(a)?a:[]}catch(e){return[]}}
+function reminderStatus(message){var el=$("reminderStatus");if(el)el.textContent=message}
+function reminderApiProblem(){
+ if(!window.isSecureContext)return"Les notifications nécessitent HTTPS (ou localhost).";
+ if(!("Notification" in window))return"Ce navigateur ne prend pas en charge les notifications.";
+ if(!("serviceWorker" in navigator))return"Le service worker n’est pas disponible dans ce navigateur.";
+ return"";
+}
+function updateReminderUI(){
+ var unsupported=reminderApiProblem(),settings=readReminderSettings(),permission=("Notification" in window)?Notification.permission:"unsupported",enabled=settings.enabled===true&&permission==="granted";
+ var enable=$("reminderEnable"),test=$("reminderTest");if(!enable||!test)return;
+ enable.disabled=!!unsupported||(permission==="denied");
+ test.disabled=!!unsupported||!enabled||swState!=="ready";
+ if(unsupported)reminderStatus(unsupported);
+ else if(permission==="denied")reminderStatus("Notifications bloquées par le navigateur. Autorise-les dans les réglages du site, puis recharge l’application.");
+ else if(swState==="checking")reminderStatus("Préparation du service de notifications… Tu peux déjà consulter tes devoirs.");
+ else if(swState==="failed")reminderStatus("Service de notifications indisponible : "+(swError||"vérifie le déploiement du fichier sw.js")+". Les devoirs restent utilisables.");
+ else if(enabled)reminderStatus("Rappels activés sur cet appareil. Les échéances sont vérifiées pendant l’utilisation de l’application.");
+ else if(permission==="granted")reminderStatus("Autorisation accordée, mais les rappels ne sont pas activés.");
+ else reminderStatus("Rappels désactivés. Active-les pour demander l’autorisation du navigateur.");
+ enable.textContent=enabled?"Rappels activés":"Activer les rappels";
+}
+function getReminderRegistration(){
+ if(swRegistration)return Promise.resolve(swRegistration);
+ if(!window.isSecureContext||!("serviceWorker" in navigator))return Promise.reject(new Error("Service worker indisponible"));
+ return navigator.serviceWorker.getRegistration("./").then(function(reg){if(!reg)throw new Error("Service worker non enregistré");swRegistration=reg;return reg});
+}
+function showLocalReminder(title,body,tag){
+ return getReminderRegistration().then(function(reg){
+  if(!reg||!reg.showNotification)throw new Error("Notifications du service worker indisponibles");
+  return reg.showNotification(title,{body:body,icon:"./icons/icon-192.png",badge:"./icons/icon-192.png",tag:tag,renotify:false,data:{url:"./"}});
+ });
+}
+function registerAppServiceWorker(){
+ if(!window.isSecureContext||!("serviceWorker" in navigator)){
+  swState="failed";swError="Service worker indisponible hors HTTPS/localhost";updateReminderUI();return Promise.resolve(null);
+ }
+ swState="checking";updateReminderUI();
+ var timeoutId;
+ var attempt=Promise.resolve().then(function(){return navigator.serviceWorker.register("./sw.js")});
+ var timeout=new Promise(function(resolve,reject){timeoutId=setTimeout(function(){reject(new Error("délai de préparation dépassé"))},10000)});
+ return Promise.race([attempt,timeout]).then(function(reg){
+  clearTimeout(timeoutId);swRegistration=reg;swState="ready";swError="";updateReminderUI();return reg;
+ }).catch(function(err){
+  clearTimeout(timeoutId);swState="failed";swError=err&&err.message?err.message:"enregistrement refusé";updateReminderUI();return null;
+ });
+}
+function enableHomeworkReminders(){
+ var unsupported=reminderApiProblem();if(unsupported){reminderStatus(unsupported);return}
+ if(Notification.permission==="denied"){updateReminderUI();return}
+ try{
+  Notification.requestPermission().then(function(permission){
+   if(permission!=="granted"){reminderStatus("Autorisation non accordée : aucun rappel ne sera envoyé.");updateReminderUI();return}
+   var settings=readReminderSettings();settings.enabled=true;
+   if(!saveReminderSettings(settings)){reminderStatus("Impossible d’enregistrer ce réglage sur l’appareil.");return}
+   updateReminderUI();
+   showLocalReminder("Rappels activés","Les échéances seront vérifiées pendant l’utilisation de l’application.","homework-reminders-enabled").catch(function(){
+    reminderStatus("Autorisation accordée, mais la notification de confirmation n’a pas pu être affichée. Réessaie le test après le chargement du service.");
+   });
+   checkHomeworkReminders();
+  }).catch(function(){reminderStatus("Le navigateur n’a pas pu demander l’autorisation. Réessaie depuis les réglages du site.")});
+ }catch(e){reminderStatus("Impossible de demander l’autorisation dans ce navigateur.")}
+}
+function testHomeworkReminder(){
+ if(reminderApiProblem()){updateReminderUI();return}
+ if(Notification.permission!=="granted"){reminderStatus("Active d’abord les notifications.");return}
+ showLocalReminder("Notification test","Si tu vois ce message, les notifications fonctionnent sur cet appareil.","homework-reminder-test-"+Date.now()).then(function(){
+  reminderStatus("Notification test envoyée. Vérifie les notifications de ton appareil.");
+ }).catch(function(){
+  reminderStatus("Échec de la notification test. Vérifie les réglages du navigateur et le service worker.");
+ });
+}
+function checkHomeworkReminders(){
+ var settings=readReminderSettings();
+ if(!settings.enabled||!("Notification" in window)||Notification.permission!=="granted"||swState!=="ready")return;
+ var now=new Date(),sent=readSentReminders(),sentSet={};
+ sent.forEach(function(id){sentSet[id]=true});
+ var newlySent=[];
+ homework.forEach(function(x){
+  if(!x||x.status==="done"||!x.dueDate)return;
+  var deadline=localDateTime(x.dueDate,x.dueTime);
+  if(!deadline||isNaN(deadline.getTime())||deadline<=now)return;
+  var parts=x.dueDate.split("-").map(Number),dueMorning=new Date(parts[0],parts[1]-1,parts[2],7,0,0,0),dayBefore=new Date(parts[0],parts[1]-1,parts[2]-1,18,0,0,0);
+  var reminders=[{kind:"veille",at:dayBefore,body:"Échéance demain : "},{kind:"jour",at:dueMorning,body:"Échéance aujourd’hui : "}];
+  reminders.forEach(function(r){
+   var id=x.id+"|"+x.dueDate+"|"+r.kind;
+   if(sentSet[id]||now<r.at||now>=deadline)return;
+   if(r.kind==="veille"&&now>=dueMorning)return;
+   sentSet[id]=true;
+   newlySent.push({id:id,title:"Devoir à rendre",body:r.body+x.title+" — "+subjectLabel(x.subjectId)+" ("+niceDate(x.dueDate)+(x.dueTime?" à "+x.dueTime:"")+")"});
+  });
+ });
+ if(!newlySent.length)return;
+ var queue=Promise.resolve();
+ newlySent.forEach(function(item){
+  queue=queue.then(function(){return showLocalReminder(item.title,item.body,item.id).then(function(){sent.push(item.id)}).catch(function(){delete sentSet[item.id]})});
+ });
+ queue.then(function(){
+  sent=sent.filter(function(id){return!!sentSet[id]});
+  if(sent.length>500)sent=sent.slice(sent.length-500);
+  try{localStorage.setItem(REMINDER_SENT_KEY,JSON.stringify(sent))}catch(e){}
+ });
+}
+function startReminderChecks(){
+ if(reminderTimer)clearInterval(reminderTimer);
+ checkHomeworkReminders();
+ reminderTimer=setInterval(checkHomeworkReminders,60000);
+ document.addEventListener("visibilitychange",function(){if(!document.hidden)checkHomeworkReminders()});
+ window.addEventListener("pageshow",checkHomeworkReminders);
+ updateReminderUI();
+}
+
+function saveHomework(){
+ try{localStorage.setItem(HOMEWORK_KEY,JSON.stringify(homework));return true}
+ catch(e){alert("Impossible de sauvegarder les devoirs sur cet appareil. Vérifie l'espace de stockage du navigateur.");return false}
+}
+function loadHomework(){
+ try{
+  var raw=localStorage.getItem(HOMEWORK_KEY);
+  if(!raw){homework=[];return}
+  var parsed=JSON.parse(raw);
+  homework=Array.isArray(parsed)?parsed.filter(function(x){return x&&typeof x.id==="string"&&typeof x.title==="string"}):[];
+ }catch(e){homework=[]}
+}
+function localDateTime(date,time){
+ if(!date)return null;
+ var p=date.split("-").map(Number);
+ if(p.length!==3||!p[0]||!p[1]||!p[2])return null;
+ var q=(time||"23:59").split(":").map(Number);
+ return new Date(p[0],p[1]-1,p[2],q[0]||0,q[1]||0,0,0);
+}
+function homeworkIsOverdue(x){
+ if(x.status==="done")return false;
+ var d=localDateTime(x.dueDate,x.dueTime);
+ return !!(d&&d<new Date());
+}
+function subjectLabel(id){return S[id]?S[id][1]+" "+S[id][0]:"Matière indisponible"}
+function niceDate(date){if(!date)return"Sans date";var p=date.split("-");return p.length!==3?date:p[2]+"/"+p[1]+"/"+p[0]}
+
+/* Photos des devoirs (IndexedDB) */
+var PHOTO_DB="edt-homework-photos-v1",PHOTO_STORE="photos",pendingPhotoData=null,photoLoadToken=0;
+function openPhotoDB(){
+ return new Promise(function(resolve,reject){
+  if(!window.indexedDB){reject(new Error("IndexedDB indisponible"));return}
+  var req=indexedDB.open(PHOTO_DB,1);
+  req.onupgradeneeded=function(){var db=req.result;if(!db.objectStoreNames.contains(PHOTO_STORE))db.createObjectStore(PHOTO_STORE)};
+  req.onsuccess=function(){resolve(req.result)};
+  req.onerror=function(){reject(req.error||new Error("Ouverture IndexedDB impossible"))};
+ });
+}
+function photoDBAction(mode,id,value){
+ return openPhotoDB().then(function(db){
+  return new Promise(function(resolve,reject){
+   var tx=db.transaction(PHOTO_STORE,mode==="get"?"readonly":"readwrite"),store=tx.objectStore(PHOTO_STORE);
+   var req=mode==="put"?store.put(value,id):mode==="delete"?store.delete(id):store.get(id);
+   req.onsuccess=function(){resolve(req.result)};
+   req.onerror=function(){reject(req.error||new Error("Erreur photo"))};
+   tx.oncomplete=function(){db.close()};
+   tx.onerror=function(){db.close();reject(tx.error||new Error("Transaction photo impossible"))};
+  });
+ });
+}
+function compressPhoto(file){
+ return new Promise(function(resolve,reject){
+  if(!file){resolve(null);return}
+  if(!file.type||file.type.indexOf("image/")!==0){reject(new Error("Choisis un fichier image."));return}
+  if(file.size>8*1024*1024){reject(new Error("Image trop volumineuse (maximum 8 Mo avant compression)."));return}
+  var reader=new FileReader();
+  reader.onerror=function(){reject(new Error("Lecture de l’image impossible."))};
+  reader.onload=function(){
+   var img=new Image();
+   img.onerror=function(){reject(new Error("Image illisible."))};
+   img.onload=function(){
+    var max=1400,scale=Math.min(1,max/Math.max(img.width,img.height)),canvas=document.createElement("canvas");
+    canvas.width=Math.max(1,Math.round(img.width*scale));
+    canvas.height=Math.max(1,Math.round(img.height*scale));
+    var ctx=canvas.getContext("2d");
+    if(!ctx){reject(new Error("Compression d’image indisponible."));return}
+    ctx.drawImage(img,0,0,canvas.width,canvas.height);
+    resolve(canvas.toDataURL("image/jpeg",0.78));
+   };
+   img.src=reader.result;
+  };
+  reader.readAsDataURL(file);
+ });
+}
+function setupPhotoPreview(data){var img=$("hwPhotoPreview");img.src=data||"";img.style.display=data?"block":"none"}
+function openHomework(id){
+ var keys=Object.keys(S).filter(function(k){return k!=="free"});
+ if(!keys.length){alert("Ajoute d'abord une matière dans la gestion des matières.");return}
+ homeworkEditId=id||null;pendingPhotoData=null;var token=++photoLoadToken;
+ $("hwPhoto").value="";setupPhotoPreview(null);$("hwPhotoRemove").style.display="none";
+ var x=id?homework.find(function(y){return y.id===id}):null;
+ $("hwSubject").innerHTML=keys.map(function(k){return '<option value="'+esc(k)+'">'+esc(S[k][1]+" "+S[k][0])+"</option>"}).join("");
+ $("hwDialogTitle").textContent=x?"✏️ Modifier le devoir":"＋ Ajouter un devoir";
+ $("hwSubject").value=x&&S[x.subjectId]?x.subjectId:keys[0];
+ $("hwTitle").value=x?x.title:"";
+ var now=new Date();
+ $("hwDate").value=x?x.dueDate:now.getFullYear()+"-"+pad(now.getMonth()+1)+"-"+pad(now.getDate());
+ $("hwTime").value=x?(x.dueTime||""):"";
+ $("hwPriority").value=x?x.priority||"medium":"medium";
+ $("hwNotes").value=x?x.notes||"":"";
+ $("hwError").textContent="";
+ $("hwDelete").style.display=x?"":"none";
+ $("dH").showModal();
+ if(x){
+  photoDBAction("get",x.id).then(function(data){
+   if(token!==photoLoadToken)return;
+   if(data){pendingPhotoData=data;setupPhotoPreview(data);$("hwPhotoRemove").style.display=""}
+  }).catch(function(){});
+ }
+}
+function refreshHomeworkSubjectFilter(){
+ var f=$("hwSubjectFilter");if(!f)return;
+ var current=f.value;
+ f.innerHTML='<option value="">Toutes les matières</option>';
+ Object.keys(S).forEach(function(id){
+  if(id==="free")return;
+  var o=document.createElement("option");o.value=id;o.textContent=subjectLabel(id);f.appendChild(o);
+ });
+ if(Array.prototype.some.call(f.options,function(o){return o.value===current}))f.value=current;
+}
+function renderHomework(){
+ var pending=homework.filter(function(x){return x.status!=="done"}),overdue=pending.filter(homeworkIsOverdue);
+ $("hwStats").innerHTML="<div class='hwstat'><strong>"+pending.length+"</strong><span>À terminer</span></div><div class='hwstat'><strong>"+overdue.length+"</strong><span>En retard</span></div><div class='hwstat'><strong>"+homework.filter(function(x){return x.status==="done"}).length+"</strong><span>Terminés</span></div>";
+ var searchText=(($("hwSearch")&&$("hwSearch").value)||"").trim().toLocaleLowerCase();
+ var subjectFilter=($("hwSubjectFilter")&&$("hwSubjectFilter").value)||"";
+ var list=homework.filter(function(x){
+  var statusOk=homeworkFilter==="done"?x.status==="done":homeworkFilter==="overdue"?homeworkIsOverdue(x):homeworkFilter==="upcoming"?x.status!=="done"&&!homeworkIsOverdue(x):true;
+  var subjectOk=!subjectFilter||x.subjectId===subjectFilter;
+  var hay=[x.title,x.notes,subjectLabel(x.subjectId)].join(" ").toLocaleLowerCase();
+  return statusOk&&subjectOk&&(!searchText||hay.indexOf(searchText)!==-1);
+ });
+ list.sort(function(a,b){
+  if(a.status!==b.status)return a.status==="done"?1:-1;
+  return(localDateTime(a.dueDate,a.dueTime)||new Date(8640000000000000))-(localDateTime(b.dueDate,b.dueTime)||new Date(8640000000000000));
+ });
+ $("hwList").innerHTML="";
+ if(!list.length){
+  var msg=(searchText||subjectFilter)?"Aucun devoir ne correspond à ta recherche ou à ce filtre.":homeworkFilter==="overdue"?"Aucun devoir en retard. Bien joué ! 🎉":homeworkFilter==="done"?"Aucun devoir terminé pour le moment.":homeworkFilter==="upcoming"?"Tout est à jour ! Ajoute un devoir quand tu en reçois un. ✨":"Aucun devoir enregistré pour le moment.";
+  $("hwList").innerHTML="<div class='hwempty'><div style='font-size:2rem'>📝</div><p>"+msg+"</p></div>";
+  return;
+ }
+ list.forEach(function(x){
+  var over=homeworkIsOverdue(x),done=x.status==="done",card=document.createElement("article");
+  card.className="hwcard";
+  var check=document.createElement("input");
+  check.type="checkbox";check.className="hwcheck";check.checked=done;
+  check.setAttribute("aria-label",(done?"Marquer comme à faire : ":"Marquer comme terminé : ")+x.title);
+  check.onchange=function(){x.status=check.checked?"done":"pending";saveHomework();renderHomework();render()};
+  var main=document.createElement("div");
+  var title=document.createElement("div");title.className="hwtitle";title.textContent=x.title;
+  if(done)title.style.textDecoration="line-through";
+  var meta=document.createElement("div");meta.className="hwmeta";
+  var subj=document.createElement("span");subj.textContent=subjectLabel(x.subjectId);meta.appendChild(subj);
+  var due=document.createElement("span");due.textContent="📅 "+niceDate(x.dueDate)+(x.dueTime?" · "+x.dueTime:"");meta.appendChild(due);
+  var tags=document.createElement("div");tags.className="hwmeta";
+  var pr=document.createElement("span");pr.className="hwtag "+(x.priority||"medium");pr.textContent={high:"Priorité haute",medium:"Priorité normale",low:"Priorité basse"}[x.priority]||"Priorité normale";tags.appendChild(pr);
+  var st=document.createElement("span");st.className="hwtag "+(done?"done":over?"overdue":"");st.textContent=done?"Terminé":over?"En retard":"À faire";tags.appendChild(st);
+  main.appendChild(title);main.appendChild(meta);main.appendChild(tags);
+  if(x.notes){var note=document.createElement("div");note.className="hwdesc";note.textContent=x.notes;main.appendChild(note)}
+  photoDBAction("get",x.id).then(function(data){
+   if(data&&card.isConnected){
+    var im=document.createElement("img");im.className="hwphoto";im.src=data;im.alt="Photo de l’exercice : "+x.title;
+    im.onclick=function(){var w=window.open();if(w){w.document.title="Photo du devoir";var big=w.document.createElement("img");big.src=data;big.style.maxWidth="100%";big.style.height="auto";w.document.body.appendChild(big)}};
+    main.appendChild(im);
+   }
+  }).catch(function(){});
+  var acts=document.createElement("div");acts.className="hwacts";
+  var edit=document.createElement("button");edit.type="button";edit.textContent="✏️";edit.title="Modifier le devoir";edit.setAttribute("aria-label","Modifier "+x.title);
+  edit.onclick=function(){openHomework(x.id)};acts.appendChild(edit);
+  card.appendChild(check);card.appendChild(main);card.appendChild(acts);
+  $("hwList").appendChild(card);
+ });
+}
+
+$("hwAdd").onclick=function(){openHomework(null)};
+$("hwCancel").onclick=function(){$("dH").close()};
+$("hwFilters").onclick=function(e){
+ var b=e.target.closest("button[data-filter]");if(!b)return;
+ homeworkFilter=b.dataset.filter;
+ [].forEach.call($("hwFilters").querySelectorAll("button"),function(x){x.classList.toggle("on",x===b)});
+ renderHomework();
+};
+$("hwSearch").oninput=renderHomework;
+$("hwSubjectFilter").onchange=renderHomework;
+$("reminderEnable").onclick=enableHomeworkReminders;
+$("reminderTest").onclick=testHomeworkReminder;
+$("hwPhoto").onchange=function(){
+ var file=this.files&&this.files[0];if(!file)return;
+ $("hwError").textContent="Compression de la photo…";
+ compressPhoto(file).then(function(data){
+  pendingPhotoData=data;setupPhotoPreview(data);$("hwPhotoRemove").style.display="";$("hwError").textContent="";
+ }).catch(function(err){
+  pendingPhotoData=null;setupPhotoPreview(null);$("hwError").textContent=err.message||"Impossible de traiter la photo.";$("hwPhoto").value="";
+ });
+};
+$("hwPhotoRemove").onclick=function(){pendingPhotoData="";$("hwPhoto").value="";setupPhotoPreview(null);this.style.display="none"};
+$("hwForm").onsubmit=function(e){
+ e.preventDefault();
+ var title=$("hwTitle").value.trim(),date=$("hwDate").value,time=$("hwTime").value,subjectId=$("hwSubject").value;
+ if(!title){$("hwError").textContent="Donne un titre au devoir.";return}
+ if(!date){$("hwError").textContent="Choisis une date limite.";return}
+ if(!localDateTime(date,time)){$("hwError").textContent="La date ou l'heure n'est pas valide.";return}
+ var old=homeworkEditId?homework.find(function(x){return x.id===homeworkEditId}):null;
+ var item={id:old?old.id:("hw-"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,8)),subjectId:subjectId,title:title,dueDate:date,dueTime:time,priority:$("hwPriority").value,status:old?old.status:"pending",notes:$("hwNotes").value.trim(),createdAt:old?old.createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()};
+ var saveBtn=$("hwSave");saveBtn.disabled=true;saveBtn.textContent="Enregistrement…";
+ var photoJob=pendingPhotoData===null?Promise.resolve("keep"):pendingPhotoData===""?photoDBAction("delete",item.id).then(function(){return null}):photoDBAction("put",item.id,pendingPhotoData).then(function(){return true});
+ photoJob.then(function(){
+  if(old)homework[homework.indexOf(old)]=item;else homework.push(item);
+  if(saveHomework()){
+   $("dH").close();homeworkFilter="all";
+   [].forEach.call($("hwFilters").querySelectorAll("button"),function(b){b.classList.toggle("on",b.dataset.filter==="all")});
+   render();showAppView("homework");
+  }else if(!old){homework=homework.filter(function(y){return y.id!==item.id})}
+ }).catch(function(){
+  $("hwError").textContent="Impossible de sauvegarder la photo sur cet appareil. Essaie une image plus petite.";
+ }).finally(function(){saveBtn.disabled=false;saveBtn.textContent="Enregistrer"});
+};
+$("hwDelete").onclick=function(){
+ var x=homework.find(function(y){return y.id===homeworkEditId});if(!x)return;
+ if(confirm("Supprimer le devoir « "+x.title+" » ?")){
+  homework=homework.filter(function(y){return y.id!==homeworkEditId});
+  photoDBAction("delete",homeworkEditId).catch(function(){});
+  if(saveHomework()){$("dH").close();renderHomework();render()}
+ }
+};
+
+/* ---- Éditeur de cours ---- */
+function openB(i){
+ $("bs").innerHTML=Object.keys(S).map(function(k){return "<option value='"+k+"'>"+esc(S[k][1])+" "+esc(S[k][0])+"</option>"}).join("");
+ $("bd").innerHTML=DN.map(function(n,j){return "<option value='"+(j+1)+"'>"+n+"</option>"}).join("");
+ ed=i;var b=i>=0?B[i]:[sel,Object.keys(S)[0],8,10];
+ $("bt").textContent=i>=0?"✏️ Modifier le cours":"➕ Ajouter un cours";
+ $("bs").value=b[1];$("bd").value=b[0];$("b1").value=t2s(b[2]);$("b2").value=t2s(b[3]);
+ $("be").textContent="";$("bdl").style.display=i>=0?"":"none";$("dB").showModal();
+}
+$("add").onclick=function(){openB(-1)};
+$("bcx").onclick=function(){$("dB").close()};
+$("bdl").onclick=function(){B.splice(ed,1);save();$("dB").close();render()};
+$("bsv").onclick=function(){
+ var d=+$("bd").value,s=s2t($("b1").value),e=s2t($("b2").value),k=$("bs").value;
+ if(isNaN(s)||isNaN(e)){$("be").textContent="Choisis une heure de début et de fin.";return}
+ if(e<=s){$("be").textContent="La fin doit être après le début.";return}
+ var o=B.filter(function(b,j){return j!=ed&&b[0]==d&&s<b[3]&&e>b[2]})[0];
+ if(o){$("be").textContent="Ce créneau chevauche : "+S[o[1]][0]+" ("+fh(o[2])+" – "+fh(o[3])+")";return}
+ var nb=[d,k,s,e];if(ed>=0)B[ed]=nb;else B.push(nb);
+ save();sel=d;$("dB").close();render();
+};
+
+/* ---- Éditeur de matières ---- */
+var PAL=["#E76F51","#2A9D8F","#8E44AD","#F4A261","#3498DB","#E91E63","#16A085","#F39C12"];
+function row(k,s){return "<div class='mr' data-k='"+esc(k)+"'><input class='me' maxlength='4' value=\""+esc(s[1])+"\"><input class='mn' placeholder='Nom' value=\""+esc(s[0])+"\"><input class='mc' type='color' value='"+esc(s[2])+"'><button type='button' class='mx' title='Supprimer'>🗑️</button></div>"}
+$("mat").onclick=function(){$("ml").innerHTML=Object.keys(S).filter(function(k){return k!="free"}).map(function(k){return row(k,S[k])}).join("");$("dM").showModal()};
+$("madd").onclick=function(){var d=document.createElement("div");d.innerHTML=row("",["","📚",PAL[Math.floor(Math.random()*PAL.length)]]);$("ml").appendChild(d.firstChild);$("ml").scrollTop=9999};
+$("ml").onclick=function(e){
+ if(!e.target.classList.contains("mx"))return;
+ var r=e.target.parentNode,k=r.dataset.k;
+ if(k){
+  var n=B.filter(function(b){return b[1]==k}).length;
+  if(n&&!confirm("Cette matière a "+n+" cours dans ta semaine. La supprimer supprimera aussi ces cours. Continuer ?"))return;
+  delete S[k];B=B.filter(function(b){return b[1]!=k});
+ }
+ r.remove();
+};
+$("mok").onclick=function(){
+ [].forEach.call($("ml").children,function(r){
+  var k=r.dataset.k,n=r.querySelector(".mn").value.trim(),e=r.querySelector(".me").value.trim()||"📚",c=r.querySelector(".mc").value;
+  if(!n)return;
+  if(k){var s=S[k];if(!s)return;if(s[2]!=c){s[2]=c;s[3]=fgOf(c)}s[0]=n;s[1]=e}
+  else S["s"+Date.now()+Math.floor(Math.random()*999)]=[n,e,c,fgOf(c),"bob"];
+ });
+ save();refreshHomeworkSubjectFilter();$("dM").close();render();renderHomework();syncGradeSubjects();renderGrades();
+ if(!$("gradeCoefficients").hidden)renderCoefficients();
+ renderRecommendations();
+};
+$("mrs").onclick=function(){
+ if(confirm("Remettre l'emploi du temps d'origine ? Tes modifications seront perdues.")){
+  try{localStorage.removeItem("edt-data")}catch(e){}
+  load();refreshHomeworkSubjectFilter();$("dM").close();render();renderHomework();syncGradeSubjects();renderGrades();
+  if(!$("gradeCoefficients").hidden)renderCoefficients();
+  renderRecommendations();
+ }
+};
+$("prt").onclick=function(){window.print()};
+$("th").onclick=function(){
+ var r=document.documentElement,dk=r.dataset.theme?r.dataset.theme=="dark":matchMedia("(prefers-color-scheme:dark)").matches;
+ r.dataset.theme=dk?"light":"dark";
+ try{localStorage.setItem("edt-th",r.dataset.theme)}catch(e){}
+};
+try{var sv=localStorage.getItem("edt-th");if(sv)document.documentElement.dataset.theme=sv}catch(e){}
+
+/* ---- Suivi des notes et recommandations ---- */
+var GRADE_SUBJECTS=[];
+var GRADE_DEFAULT_COEFFICIENTS={elec:4,est:2,tech:2,tp:5,math:4,fr:3,ang:2,phy:4,eps:2,dess:4,philo:1,leg:1};
+var GRADE_LEGACY_NAMES={electro:"Électrotechnique",est:"EST",techno:"Technologie générale",mesure:"Manipulation, mesure et essai",tp:"TP",maths:"Mathématiques générales",francais:"Français",anglais:"Anglais",pct:"PCT",eps:"EPS",conduite:"Conduite",dessin:"Dessin technique",philo:"Philosophie",legicge:"Législation et CGE"};
+var GRADE_ID_MIGRATION={electro:"elec",est:"est",techno:"tech",mesure:"tp",tp:"tp",maths:"math",francais:"fr",anglais:"ang",pct:"phy",eps:"eps",dessin:"dess",philo:"philo",legicge:"leg"};
+var GRADE_KEY="edt-grades-v1",COEF_KEY="edt-grade-coefficients-v1",grades=[],gradeEditId=null,gradeCoefficients={};
+
+function normalizeSubjectName(name){return String(name||"").normalize?String(name||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLocaleLowerCase().replace(/[^a-z0-9]+/g," ").trim():String(name||"").toLocaleLowerCase().trim()}
+function resolveGradeSubjectId(id){
+ if(S[id]&&id!=="free")return id;
+ var mapped=GRADE_ID_MIGRATION[id];if(mapped&&S[mapped])return mapped;
+ var wanted=normalizeSubjectName(GRADE_LEGACY_NAMES[id]||id);
+ var found=Object.keys(S).filter(function(k){return k!=="free"&&normalizeSubjectName(S[k][0])===wanted})[0];
+ return found||id;
+}
+function syncGradeSubjects(){
+ var seen={};GRADE_SUBJECTS=[];
+ Object.keys(S).forEach(function(id){
+  if(id==="free")return;
+  seen[id]=true;
+  GRADE_SUBJECTS.push({id:id,name:S[id][0],coef:GRADE_DEFAULT_COEFFICIENTS[id]!==undefined?GRADE_DEFAULT_COEFFICIENTS[id]:1,active:true});
+ });
+ var legacyIds=[];
+ grades.forEach(function(g){if(!seen[g.subjectId]&&legacyIds.indexOf(g.subjectId)<0)legacyIds.push(g.subjectId)});
+ legacyIds.forEach(function(id){GRADE_SUBJECTS.push({id:id,name:GRADE_LEGACY_NAMES[id]||"Ancienne matière",coef:1,active:false})});
+}
+function loadGrades(){
+ var migrated=false;
+ try{
+  var a=JSON.parse(localStorage.getItem(GRADE_KEY)||"[]");
+  grades=Array.isArray(a)?a.filter(function(x){
+   return x&&typeof x.id==="string"&&typeof x.subjectId==="string"&&Number.isFinite(Number(x.value))&&Number(x.value)>=0&&Number(x.value)<=20;
+  }).map(function(x){
+   var mapped=resolveGradeSubjectId(x.subjectId);
+   if(mapped!==x.subjectId){migrated=true;return Object.assign({},x,{subjectId:mapped})}
+   return x;
+  }):[];
+ }catch(e){grades=[]}
+ try{var c=JSON.parse(localStorage.getItem(COEF_KEY)||"{}");gradeCoefficients=c&&typeof c==="object"&&!Array.isArray(c)?c:{}}catch(e){gradeCoefficients={}}
+ var migratedCoefs={};
+ Object.keys(gradeCoefficients).forEach(function(id){
+  var mapped=resolveGradeSubjectId(id);
+  if(mapped!==id){if(migratedCoefs[mapped]===undefined)migratedCoefs[mapped]=gradeCoefficients[id];migrated=true}
+  else migratedCoefs[id]=gradeCoefficients[id];
+ });
+ gradeCoefficients=migratedCoefs;
+ syncGradeSubjects();
+ if(migrated){try{localStorage.setItem(GRADE_KEY,JSON.stringify(grades));localStorage.setItem(COEF_KEY,JSON.stringify(gradeCoefficients))}catch(e){}}
+}
+function saveGrades(){try{localStorage.setItem(GRADE_KEY,JSON.stringify(grades));return true}catch(e){alert("Impossible d'enregistrer les notes sur cet appareil.");return false}}
+function subjectName(id){var s=GRADE_SUBJECTS.find(function(x){return x.id===id});if(s)return s.name;if(S[id])return S[id][0];return GRADE_LEGACY_NAMES[id]||"Matière inconnue"}
+function coefficient(id){var s=GRADE_SUBJECTS.find(function(x){return x.id===id});var n=Number(gradeCoefficients[id]!==undefined?gradeCoefficients[id]:s?s.coef:1);return Number.isFinite(n)&&n>=0&&n<=20?n:(s?s.coef:1)}
+function gradeAverage(list){return list.length?list.reduce(function(a,x){return a+Number(x.value)},0)/list.length:null}
+function weightedAverage(){
+ var sum=0,weights=0;
+ GRADE_SUBJECTS.forEach(function(s){
+  if(!s.active)return;
+  var a=gradeAverage(grades.filter(function(g){return g.subjectId===s.id})),c=coefficient(s.id);
+  if(a!==null&&c>0){sum+=a*c;weights+=c}
+ });
+ return weights?sum/weights:null;
+}
+function fmtGrade(n){return n===null?"—":n.toFixed(2).replace(".",",")+"/20"}
+function renderGrades(){
+ syncGradeSubjects();
+ var avg=weightedAverage(),count=grades.length,activeList=GRADE_SUBJECTS.filter(function(s){return s.active}),subjects=activeList.filter(function(s){return grades.some(function(g){return g.subjectId===s.id})}).length;
+ $("gradeSummary").innerHTML="<div class='grade-stat'><strong>"+fmtGrade(avg)+"</strong><span>Moyenne générale pondérée</span></div><div class='grade-stat'><strong>"+count+"</strong><span>Évaluations enregistrées</span></div><div class='grade-stat'><strong>"+subjects+"/"+activeList.length+"</strong><span>Matières évaluées</span></div>";
+ var rows=GRADE_SUBJECTS.map(function(s){
+  var list=grades.filter(function(g){return g.subjectId===s.id}),a=gradeAverage(list);
+  return "<tr><td>"+esc(s.name)+(s.active?"":" <small>(ancienne matière)</small>")+"</td><td>"+(s.active?coefficient(s.id):"—")+"</td><td>"+fmtGrade(a)+"</td><td>"+list.length+"</td></tr>";
+ }).join("");
+ $("gradeAverages").innerHTML="<div style='overflow-x:auto'><table class='grade-table'><thead><tr><th>Matière de l’emploi du temps</th><th>Coef.</th><th>Moyenne</th><th>Notes</th></tr></thead><tbody>"+rows+"</tbody></table></div>";
+ var list=grades.slice().sort(function(a,b){return(b.date||"").localeCompare(a.date||"")});
+ $("gradeList").innerHTML=list.length?list.map(function(g){
+  return "<div class='grade-row'><div><strong>"+esc(g.title)+"</strong><small>"+esc(subjectName(g.subjectId))+" · "+esc(g.date||"")+"</small></div><strong>"+Number(g.value).toLocaleString("fr-FR")+"/20</strong><span><button type='button' data-edit-grade='"+esc(g.id)+"' aria-label='Modifier'>✏️</button> <button type='button' data-delete-grade='"+esc(g.id)+"' aria-label='Supprimer'>🗑️</button></span></div>";
+ }).join(""):"<div class='grade-empty'>Aucune note pour le moment. Ajoute ta première évaluation.</div>";
+ $("gradeSubject").innerHTML=activeList.map(function(s){return '<option value="'+esc(s.id)+'">'+esc(s.name)+"</option>"}).join("");
+}
+function renderCoefficients(){
+ $("gradeCoefficientList").innerHTML="<div style='overflow-x:auto'><table class='grade-table'><thead><tr><th>Matière de l’emploi du temps</th><th>Coefficient</th></tr></thead><tbody>"+GRADE_SUBJECTS.filter(function(s){return s.active}).map(function(s){
+  return '<tr><td>'+esc(s.name)+'</td><td><input type="number" min="0" max="20" step="0.5" data-coef="'+esc(s.id)+'" value="'+coefficient(s.id)+'" aria-label="Coefficient '+esc(s.name)+'"></td></tr>';
+ }).join("")+"</tbody></table></div>";
+}
+function renderRecommendations(){
+ var arr=[];
+ GRADE_SUBJECTS.filter(function(s){return s.active}).forEach(function(s){
+  var list=grades.filter(function(g){return g.subjectId===s.id}),a=gradeAverage(list);
+  if(a!==null){
+   var c=coefficient(s.id);
+   if(a<10)arr.push({rank:0,title:"Renforcer "+s.name,body:"Ta moyenne actuelle est de "+fmtGrade(a)+". Reprends les notions non maîtrisées et fais quelques exercices courts et réguliers.",coef:c});
+   else if(a<12)arr.push({rank:1,title:"Consolider "+s.name,body:"Tu es proche de 12/20. Revois les erreurs des dernières évaluations et entraîne-toi sur un exercice similaire.",coef:c});
+   else if(a>=15)arr.push({rank:2,title:"Entretenir "+s.name,body:"Tes résultats sont encourageants ("+fmtGrade(a)+"). Continue à réviser régulièrement pour maintenir ce niveau.",coef:c});
+  }
+ });
+ arr.sort(function(a,b){return a.rank-b.rank||b.coef-a.coef});
+ var overall=weightedAverage();
+ var html="<div class='grade-panel'><h3>Ton bilan</h3><p>"+(overall===null?"Ajoute des notes pour obtenir un bilan personnalisé.":"Ta moyenne générale pondérée actuelle est de <strong>"+fmtGrade(overall)+"</strong>. Les conseils ci-dessous sont fondés uniquement sur les notes enregistrées.")+"</p></div>";
+ html+=arr.length?arr.map(function(x){return '<article class="rec-card"><strong>'+esc(x.title)+'</strong><p>'+esc(x.body)+'</p></article>'}).join(""):overall===null?"":"<div class='grade-empty'>Tes moyennes enregistrées sont au moins égales à 12/20. Continue tes efforts et ajoute les prochaines évaluations pour actualiser ce bilan.</div>";
+ $("recommendations").innerHTML=html;
+}
+
+function showAppView(view){
+ var hw=view==="homework",gr=view==="grades",rc=view==="recommend";
+ $("scheduleView").hidden=hw||gr||rc;
+ $("homeworkView").hidden=!hw;
+ $("gradesView").hidden=!gr;
+ $("recommendView").hidden=!rc;
+ [["navSchedule",!hw&&!gr&&!rc],["navHomework",hw],["navGrades",gr],["navRecs",rc]].forEach(function(x){$(x[0]).setAttribute("aria-pressed",x[1]?"true":"false")});
+ if(hw){refreshHomeworkSubjectFilter();renderHomework()}
+ if(gr)renderGrades();
+ if(rc)renderRecommendations();
+}
+$("navSchedule").onclick=function(){showAppView("schedule")};
+$("navHomework").onclick=function(){showAppView("homework")};
+$("navGrades").onclick=function(){showAppView("grades")};
+$("navRecs").onclick=function(){showAppView("recommend")};
+
+$("gradeAdd").onclick=function(){
+ gradeEditId=null;$("gradeForm").reset();
+ var now=new Date();$("gradeDate").value=now.getFullYear()+"-"+pad(now.getMonth()+1)+"-"+pad(now.getDate());
+ $("gradeDialogTitle").textContent="＋ Ajouter une note";$("gradeError").textContent="";
+ renderGrades();$("gradeDialog").showModal();
+};
+$("gradeCancel").onclick=function(){$("gradeDialog").close()};
+$("gradeForm").onsubmit=function(e){
+ e.preventDefault();
+ var rawVal=$("gradeValue").value.trim(),v=Number(rawVal),sub=$("gradeSubject").value,title=$("gradeTitle").value.trim(),date=$("gradeDate").value;
+ if(!title){$("gradeError").textContent="Indique le nom de l’évaluation.";return}
+ if(rawVal===""||!Number.isFinite(v)||v<0||v>20){$("gradeError").textContent="La note doit être comprise entre 0 et 20.";return}
+ var old=gradeEditId?grades.find(function(x){return x.id===gradeEditId}):null;
+ var item={id:old?old.id:"gr-"+Date.now().toString(36)+Math.random().toString(36).slice(2,7),subjectId:sub,value:v,title:title,date:date};
+ if(old)grades[grades.indexOf(old)]=item;else grades.push(item);
+ if(saveGrades()){$("gradeDialog").close();gradeEditId=null;renderGrades();renderRecommendations()}
+};
+$("gradeList").onclick=function(e){
+ var edit=e.target.closest("[data-edit-grade]"),del=e.target.closest("[data-delete-grade]");
+ if(edit){
+  var g=grades.find(function(x){return x.id===edit.dataset.editGrade});if(!g)return;
+  gradeEditId=g.id;
+  var gradeSelect=$("gradeSubject");
+  if(!Array.prototype.some.call(gradeSelect.options,function(o){return o.value===g.subjectId})){
+   var archivedOption=document.createElement("option");
+   archivedOption.value=g.subjectId;archivedOption.textContent=subjectName(g.subjectId)+" (ancienne matière)";
+   gradeSelect.appendChild(archivedOption);
+  }
+  gradeSelect.value=g.subjectId;$("gradeValue").value=g.value;$("gradeTitle").value=g.title;$("gradeDate").value=g.date;
+  $("gradeDialogTitle").textContent="✏️ Modifier une note";$("gradeError").textContent="";$("gradeDialog").showModal();
+ }
+ if(del){
+  var id=del.dataset.deleteGrade;
+  if(confirm("Supprimer cette note ?")){grades=grades.filter(function(x){return x.id!==id});saveGrades();renderGrades();renderRecommendations()}
+ }
+};
+$("gradeSubjectsToggle").onclick=function(){
+ $("gradeCoefficients").hidden=!$("gradeCoefficients").hidden;
+ if(!$("gradeCoefficients").hidden)renderCoefficients();
+};
+$("gradeCoeffSave").onclick=function(){
+ var inputs=$("gradeCoefficientList").querySelectorAll("[data-coef]"),next={};
+ for(var i=0;i<inputs.length;i++){
+  var n=Number(inputs[i].value);
+  if(!Number.isFinite(n)||n<0||n>20){alert("Chaque coefficient doit être compris entre 0 et 20.");return}
+  next[inputs[i].dataset.coef]=n;
+ }
+ try{localStorage.setItem(COEF_KEY,JSON.stringify(next));gradeCoefficients=next;renderGrades();renderRecommendations();alert("Coefficients enregistrés.")}
+ catch(e){alert("Impossible d'enregistrer les coefficients.")}
+};
+
+/* ---- Initialisation ---- */
+try{load()}catch(e){reportAppError(e&&e.message?e.message:e)}
+try{loadHomework()}catch(e){reportAppError(e&&e.message?e.message:e)}
+try{loadGrades()}catch(e){reportAppError(e&&e.message?e.message:e)}
+try{refreshHomeworkSubjectFilter()}catch(e){reportAppError(e&&e.message?e.message:e)}
+try{render()}catch(e){reportAppError(e&&e.message?e.message:e)}
+try{renderHomework()}catch(e){reportAppError(e&&e.message?e.message:e)}
+try{setDisplayMode(mobileQuery)}catch(e){reportAppError(e&&e.message?e.message:e)}
+setInterval(function(){try{tick()}catch(e){reportAppError(e&&e.message?e.message:e)}},30000);
+registerAppServiceWorker().then(function(){startReminderChecks()});
+window.addEventListener("online",function(){registerAppServiceWorker().then(function(){updateReminderUI();checkHomeworkReminders()})});
+</script>
+</body>
+</html>
