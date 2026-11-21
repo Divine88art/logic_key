@@ -1,8 +1,8 @@
 {
   "id": "./",
-  "name": "Emploi du temps – Terminale F3",
-  "short_name": "Mon EDT",
-  "description": "Emploi du temps, suivi des devoirs avec photos et rappels, suivi des notes semestrielles et recommandations personnalisées pour la Terminale F3.",
+  "name": "My EDT – Emploi du temps & Habitudes",
+  "short_name": "My EDT",
+  "description": "Gestionnaire de semaine à deux univers : emploi du temps scolaire (Lundi à Samedi), devoirs, notes semestrielles et planning libre & habitudes sur 7 jours.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
@@ -10,7 +10,7 @@
   "background_color": "#f6f4ef",
   "theme_color": "#F5B301",
   "lang": "fr",
-  "categories": ["education", "productivity"],
+  "categories": ["education", "productivity", "lifestyle"],
   "icons": [
     {
       "src": "icons/icon-192.png",

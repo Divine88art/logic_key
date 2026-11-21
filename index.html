@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="fr" data-universe="school">
 <head>
  <meta charset="utf-8">
  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -13,22 +13,64 @@
 <body>
  <div class="bg"><i></i><i></i><i></i></div>
 
+ <div id="glitchOverlay" class="glitch-overlay" hidden aria-hidden="true">
+  <div class="glitch-core">
+   <span id="glitchBadge" class="glitch-badge">🌿</span>
+   <strong id="glitchTitle">LIBRE &amp; HABITUDES</strong>
+  </div>
+ </div>
+
  <header>
-  <h1><span>📅</span> <span class="g">Mon emploi du temps</span></h1>
-  <p class="sub">Terminale F3 · Électrotechnique</p>
+  <div class="island-wrap">
+   <div id="island" class="island" role="button" tabindex="0" aria-expanded="false" aria-label="Capsule d’état : appui court pour développer, appui long pour changer d’univers">
+    <div class="island-progress" aria-hidden="true"></div>
+    <div class="island-compact">
+     <span class="island-uni" id="islandUni">🎓</span>
+     <div class="island-mid">
+      <strong id="islandTitle">Terminale F3</strong>
+      <span id="islandStatus">Chargement…</span>
+     </div>
+     <span class="island-alert" id="islandAlert" hidden></span>
+     <span class="island-chev" aria-hidden="true">▾</span>
+    </div>
+    <div class="island-expanded" id="islandExpanded" hidden>
+     <div class="island-exp-grid">
+      <div class="island-exp-card">
+       <small id="islandSlotLabel">À SUIVRE</small>
+       <strong id="islandSlotName">—</strong>
+       <span id="islandSlotTime">—</span>
+      </div>
+      <div class="island-exp-card">
+       <small id="islandWeekLabel">SYNTHÈSE SEMAINE</small>
+       <strong id="islandWeekMain">—</strong>
+       <span id="islandWeekSub">—</span>
+      </div>
+     </div>
+     <div class="island-exp-actions">
+      <button type="button" id="islandEditTitle" class="island-mini-btn">✏️ Personnaliser la classe / l’intitulé</button>
+      <span class="island-hint">Appui long sur la capsule pour changer d’univers</span>
+     </div>
+    </div>
+   </div>
+  </div>
+
   <div class="tools">
-   <button id="add" type="button" title="Ajouter un cours" aria-label="Ajouter un cours">➕</button>
-   <button id="mat" type="button" title="Gérer les matières" aria-label="Matières">🎨</button>
+   <button id="add" type="button" title="Ajouter un créneau" aria-label="Ajouter un créneau">➕</button>
+   <button id="mat" type="button" title="Gérer les matières ou activités" aria-label="Gérer les matières ou activités">🎨</button>
    <button id="prt" type="button" title="Imprimer" aria-label="Imprimer">🖨️</button>
    <button id="th" type="button" title="Thème" aria-label="Thème">🌗</button>
   </div>
  </header>
 
  <nav class="appnav" aria-label="Sections de l’application">
-  <button id="navSchedule" type="button" aria-pressed="true">📅 Emploi du temps</button>
-  <button id="navHomework" type="button" aria-pressed="false">📚 Mes devoirs</button>
-  <button id="navGrades" type="button" aria-pressed="false">📊 Suivi des notes</button>
-  <button id="navRecs" type="button" aria-pressed="false">💡 Recommandations</button>
+  <button id="navSchedule" type="button" data-uni="school" aria-pressed="true">📅 Emploi du temps</button>
+  <button id="navHomework" type="button" data-uni="school" aria-pressed="false">📚 Mes devoirs</button>
+  <button id="navGrades" type="button" data-uni="school" aria-pressed="false">📊 Suivi des notes</button>
+  <button id="navRecs" type="button" data-uni="school" aria-pressed="false">💡 Recommandations</button>
+
+  <button id="navLifeSchedule" type="button" data-uni="life" aria-pressed="false" hidden>📅 Planning 7j</button>
+  <button id="navLifeHabits" type="button" data-uni="life" aria-pressed="false" hidden>✅ Habitudes &amp; Suivi</button>
+  <button id="navLifeStats" type="button" data-uni="life" aria-pressed="false" hidden>📈 Bilan semaine</button>
  </nav>
 
  <div id="scheduleView">
@@ -124,6 +166,92 @@
   <div id="recommendations"></div>
  </section>
 
+ <section id="lifeHabitsView" hidden aria-labelledby="lifeHabitsHeading">
+  <div class="hwhead">
+   <div>
+    <h2 id="lifeHabitsHeading">✅ Habitudes &amp; Suivi quotidien</h2>
+    <p class="sub">Suis tes activités planifiées du jour et tes habitudes quotidiennes.</p>
+   </div>
+   <div class="grade-actions">
+    <button class="grade-btn" id="lifeHabitAdd" type="button">＋ Habitude quotidienne</button>
+    <button class="grade-btn secondary" id="lifeActivityAdd" type="button">＋ Créneau 7j</button>
+   </div>
+  </div>
+
+  <section class="grade-panel">
+   <h3>📅 Activités planifiées aujourd’hui</h3>
+   <div id="lifeTodayBlocks" class="hwlist" aria-live="polite"></div>
+  </section>
+
+  <section class="grade-panel">
+   <h3>🌿 Habitudes quotidiennes (sans heure fixe)</h3>
+   <div id="lifeHabitsList" class="hwlist" aria-live="polite"></div>
+  </section>
+
+  <section class="grade-panel">
+   <h3>🧩 Panoplie d’activités à intégrer</h3>
+   <p class="sub">Choisis les activités que tu veux ajouter à ton planning 7 jours ou en habitude quotidienne.</p>
+   <div id="lifePresetGrid" class="life-preset-grid"></div>
+  </section>
+ </section>
+
+ <section id="lifeStatsView" hidden aria-labelledby="lifeStatsHeading">
+  <div class="grade-head">
+   <div>
+    <h2 id="lifeStatsHeading">📈 Bilan de la semaine</h2>
+    <p class="sub">Régularité de tes habitudes et répartition de ton temps libre (Lundi → Dimanche).</p>
+   </div>
+  </div>
+  <div id="lifeStatsSummary" class="grade-summary" aria-live="polite"></div>
+  <section class="grade-panel">
+   <h3>Accomplissement jour par jour (semaine en cours)</h3>
+   <div id="lifeWeekBars" class="life-week-bars"></div>
+  </section>
+  <section class="grade-panel">
+   <h3>Détail par activité &amp; habitude</h3>
+   <div id="lifeBreakdown" class="grade-list"></div>
+  </section>
+ </section>
+
+ <dialog id="dTitle">
+  <form id="titleForm">
+   <h3>✏️ Personnaliser les intitulés</h3>
+   <p class="sub">Définis le nom de ta classe/école et de ton univers personnel.</p>
+   <label for="titleSchoolInput">Classe / École (Univers Scolaire)</label>
+   <input id="titleSchoolInput" maxlength="60" required placeholder="Ex. : Terminale F3 · Lycée Technique">
+   <label for="titleLifeInput">Intitulé (Univers Libre &amp; Habitudes)</label>
+   <input id="titleLifeInput" maxlength="60" required placeholder="Ex. : Libre &amp; Habitudes">
+   <div class="btns">
+    <button type="submit">Enregistrer</button>
+    <button type="button" id="titleCancel" class="gh">Annuler</button>
+   </div>
+  </form>
+ </dialog>
+
+ <dialog id="dLifeHabit">
+  <form id="lifeHabitForm">
+   <h3 id="lifeHabitDialogTitle">＋ Habitude quotidienne</h3>
+   <div class="two">
+    <div style="flex:0 0 88px">
+     <label for="lifeHabitIcon">Emoji</label>
+     <input id="lifeHabitIcon" maxlength="4" value="🌿" required>
+    </div>
+    <div>
+     <label for="lifeHabitName">Nom de l’habitude</label>
+     <input id="lifeHabitName" maxlength="60" required placeholder="Ex. : Boire 2 L d’eau">
+    </div>
+   </div>
+   <label for="lifeHabitColor">Couleur</label>
+   <input id="lifeHabitColor" type="color" value="#10B981" style="height:42px;padding:3px">
+   <p id="lifeHabitError" role="alert" class="er"></p>
+   <div class="btns">
+    <button type="submit">Enregistrer</button>
+    <button type="button" id="lifeHabitDelete" class="dg">Supprimer</button>
+    <button type="button" id="lifeHabitCancel" class="gh">Annuler</button>
+   </div>
+  </form>
+ </dialog>
+
  <dialog id="gradeDialog">
   <form id="gradeForm">
    <h3 id="gradeDialogTitle">＋ Ajouter une note</h3>
@@ -193,7 +321,7 @@
 
  <dialog id="dB">
   <h3 id="bt"></h3>
-  <label for="bs">Matière</label><select id="bs"></select>
+  <label for="bs" id="bsLab">Matière</label><select id="bs"></select>
   <label for="bd">Jour</label><select id="bd"></select>
   <div class="two">
    <div><label for="b1">Début</label><input type="time" id="b1" step="900"></div>
@@ -208,10 +336,10 @@
  </dialog>
 
  <dialog id="dM">
-  <h3>🎨 Mes matières</h3>
-  <p style="margin:0;color:var(--mu);font-size:.85rem">Change le nom, l'emoji ou la couleur, ajoute-en de nouvelles.</p>
+  <h3 id="mt">🎨 Mes matières</h3>
+  <p id="ms" style="margin:0;color:var(--mu);font-size:.85rem">Change le nom, l'emoji ou la couleur, ajoute-en de nouvelles.</p>
   <div id="ml"></div>
-  <div class="btns"><button id="madd" type="button" class="gh">➕ Nouvelle matière</button></div>
+  <div class="btns"><button id="madd" type="button" class="gh">➕ Ajouter</button></div>
   <div class="btns"><button id="mok" type="button">Terminé</button><button id="mrs" type="button" class="dg">Réinitialiser</button></div>
  </dialog>
 

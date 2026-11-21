@@ -1,3 +1,14 @@
+/* ============================================================================
+   My EDT — Fichier JS unique fusionné
+   Ordre : [1] Core (ancien script(1).js) → [2] Modules métier (ancien script.js)
+           → [3] Initialisation finale
+   ============================================================================ */
+
+/* ============================================================================
+   PARTIE 1 — CORE / FONDATIONS
+   (anciennement script(1).js)
+   ============================================================================ */
+
 /* ---- Configuration par défaut & utilitaires ---- */
 var DEF_S = {
  elec: ["Électrotechnique", "⚡", "#F5B301", "#3a2a00", "pulse"],
@@ -23,28 +34,45 @@ var DEF_B = [
  [5, "fr", 8, 12], [5, "tech", 14, 17], [5, "eps", 17, 19]
 ];
 
-var DN = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"];
-var S, B, T0 = 7, T1 = 19, hk = "", ed = -1;
+var LIFE_PRESETS = [
+ { id: "sport", name: "Sport / Entraînement", icon: "🏃", color: "#10B981", anim: "pulse" },
+ { id: "lecture", name: "Lecture", icon: "📖", color: "#3B82F6", anim: "bob" },
+ { id: "medit", name: "Méditation / Calme", icon: "🧘", color: "#8B5CF6", anim: "bob" },
+ { id: "projets", name: "Projets perso", icon: "💻", color: "#06B6D4", anim: "pulse" },
+ { id: "revisions", name: "Révisions libres", icon: "📚", color: "#F59E0B", anim: "wig" },
+ { id: "marche", name: "Marche 30 min", icon: "🚶", color: "#22C55E", anim: "bob" },
+ { id: "hydrat", name: "Hydratation 2 L", icon: "💧", color: "#0EA5E9", anim: "bob" },
+ { id: "menage", name: "Rangement / Tâches", icon: "🧹", color: "#64748B", anim: "wig" },
+ { id: "musique", name: "Musique / Art", icon: "🎸", color: "#EC4899", anim: "wig" },
+ { id: "cuisine", name: "Cuisine / Repas", icon: "🥗", color: "#84CC16", anim: "bob" },
+ { id: "detente", name: "Détente / Loisirs", icon: "🎮", color: "#6366F1", anim: "bob" },
+ { id: "sommeil", name: "Routine soir", icon: "😴", color: "#475569", anim: "bob" }
+];
+
+var DN_SCHOOL = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
+var DN_LIFE = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
+
+var META_KEY = "edt-meta-v1", LIFE_KEY = "edt-life-data";
+var meta = { universe: "school", schoolTitle: "Terminale F3", lifeTitle: "Libre & Habitudes" };
+var S, B, lifeData = { S: {}, B: [], habits: [], logs: {} };
+var T0 = 7, T1 = 19, hk = "", ed = -1, currentView = "schedule";
 
 function $(i) { return document.getElementById(i); }
 
 function reportAppError(message) {
- var msg = "L’application a rencontré un problème au chargement : " + String(message || "erreur inconnue") + ". Les données enregistrées ne sont pas effacées ; recharge la page ou signale ce message.";
+ var msg = "L’application a rencontré un problème : " + String(message || "erreur inconnue") + ". Les données enregistrées ne sont pas effacées.";
  var el = $("reminderStatus");
  if (el) el.textContent = msg;
+ var st = $("islandStatus");
+ if (st) st.textContent = "Erreur de chargement";
  var hero = $("hero");
  if (hero && !hero.innerHTML) {
   hero.innerHTML = "<div class='hero' style='background:var(--card);color:var(--tx)'><div class='big'>⚠️</div><div class='grow'><h2>Erreur de chargement</h2><p>" + esc(msg) + "</p></div></div>";
  }
 }
 
-window.addEventListener("error", function (ev) {
- reportAppError(ev && ev.message ? ev.message : "Erreur JavaScript");
-});
-window.addEventListener("unhandledrejection", function (ev) {
- var reason = ev && ev.reason;
- reportAppError(reason && reason.message ? reason.message : reason || "Opération asynchrone impossible");
-});
+window.addEventListener("error", function (ev) { reportAppError(ev && ev.message ? ev.message : "Erreur JavaScript"); });
+window.addEventListener("unhandledrejection", function (ev) { var r = ev && ev.reason; reportAppError(r && r.message ? r.message : r || "Erreur asynchrone"); });
 
 function clone(o) { return JSON.parse(JSON.stringify(o)); }
 function esc(t) { return String(t).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/'/g, "&#39;").replace(/</g, "&lt;"); }
@@ -60,39 +88,335 @@ function fgOf(c) {
  var r = parseInt(c.substr(1, 2), 16), g = parseInt(c.substr(3, 2), 16), b = parseInt(c.substr(5, 2), 16);
  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.62 ? "#1d2330" : "#fff";
 }
+function todayNum() { var d = new Date().getDay(); return d === 0 ? 7 : d; }
+function dateKey(dateObj) {
+ var d = dateObj || new Date();
+ return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+}
 
-/* ---- Emploi du temps ---- */
+/* ---- Helpers d'univers actif ---- */
+function isLife() { return meta.universe === "life"; }
+function activeDays() { return isLife() ? DN_LIFE : DN_SCHOOL; }
+function activeS() { return isLife() ? lifeData.S : S; }
+function activeB() { return isLife() ? lifeData.B : B; }
+function activeTitle() { return isLife() ? meta.lifeTitle : meta.schoolTitle; }
+function saveActive() { if (isLife()) saveLifeData(); else save(); }
+
+function loadMeta() {
+ meta = { universe: "school", schoolTitle: "Terminale F3", lifeTitle: "Libre & Habitudes" };
+ try {
+  var raw = localStorage.getItem(META_KEY), j = raw ? JSON.parse(raw) : null;
+  if (j && typeof j === "object") {
+   if (j.universe === "school" || j.universe === "life") meta.universe = j.universe;
+   if (typeof j.schoolTitle === "string" && j.schoolTitle.trim()) meta.schoolTitle = j.schoolTitle.trim();
+   if (typeof j.lifeTitle === "string" && j.lifeTitle.trim()) meta.lifeTitle = j.lifeTitle.trim();
+  }
+ } catch (e) {}
+}
+function saveMeta() {
+ try { localStorage.setItem(META_KEY, JSON.stringify(meta)); } catch (e) {}
+}
+
+function validateSubjectMap(obj) {
+ var next = {};
+ if (!obj || typeof obj !== "object" || Array.isArray(obj)) return next;
+ Object.keys(obj).forEach(function (k) {
+  var v = obj[k];
+  if (Array.isArray(v) && typeof v[0] === "string" && typeof v[1] === "string" && /^#[0-9a-f]{6}$/i.test(v[2] || "") && typeof v[3] === "string") {
+   next[k] = [v[0], v[1], v[2], v[3], typeof v[4] === "string" ? v[4] : "bob"];
+  }
+ });
+ return next;
+}
+
+function validateBlockList(arr, subjectMap, maxDay) {
+ if (!Array.isArray(arr)) return [];
+ return arr.filter(function (b) {
+  return Array.isArray(b) && b.length >= 4 && Number.isInteger(Number(b[0])) && Number(b[0]) >= 1 && Number(b[0]) <= maxDay && subjectMap[b[1]] && Number.isFinite(Number(b[2])) && Number.isFinite(Number(b[3])) && Number(b[2]) >= 0 && Number(b[3]) <= 24 && Number(b[3]) > Number(b[2]);
+ }).map(function (b) { return [Number(b[0]), b[1], Number(b[2]), Number(b[3])]; });
+}
+
 function load() {
  S = clone(DEF_S);
  B = clone(DEF_B);
  try {
   var raw = localStorage.getItem("edt-data"), j = raw ? JSON.parse(raw) : null;
-  if (j && j.S && typeof j.S === "object" && !Array.isArray(j.S)) {
-   var nextS = {};
-   Object.keys(j.S).forEach(function (k) {
-    var v = j.S[k];
-    if (Array.isArray(v) && typeof v[0] === "string" && typeof v[1] === "string" && /^#[0-9a-f]{6}$/i.test(v[2] || "") && typeof v[3] === "string") {
-     nextS[k] = [v[0], v[1], v[2], v[3], typeof v[4] === "string" ? v[4] : "bob"];
-    }
-   });
+  if (j) {
+   var nextS = validateSubjectMap(j.S);
    if (Object.keys(nextS).length) S = nextS;
-  }
-  if (j && Array.isArray(j.B)) {
-   B = j.B.filter(function (b) {
-    return Array.isArray(b) && b.length >= 4 && Number.isInteger(Number(b[0])) && Number(b[0]) >= 1 && Number(b[0]) <= 5 && S[b[1]] && Number.isFinite(Number(b[2])) && Number.isFinite(Number(b[3])) && Number(b[2]) >= 0 && Number(b[3]) <= 24 && Number(b[3]) > Number(b[2]);
-   }).map(function (b) { return [Number(b[0]), b[1], Number(b[2]), Number(b[3])]; });
+   if (Array.isArray(j.B)) B = validateBlockList(j.B, S, 6);
   }
  } catch (e) {
   S = clone(DEF_S);
   B = clone(DEF_B);
  }
 }
-
 function save() {
  try { localStorage.setItem("edt-data", JSON.stringify({ S: S, B: B })); } catch (e) {}
 }
 
-var td = new Date().getDay(), sel = (td >= 1 && td <= 5) ? td : 1, tl = $("tl"), tb = $("tabs"), lg = $("l"), H = $("hero");
+function loadLifeData() {
+ lifeData = { S: {}, B: [], habits: [], logs: {} };
+ try {
+  var raw = localStorage.getItem(LIFE_KEY), j = raw ? JSON.parse(raw) : null;
+  if (j && typeof j === "object") {
+   lifeData.S = validateSubjectMap(j.S);
+   lifeData.B = validateBlockList(j.B, lifeData.S, 7);
+   lifeData.habits = Array.isArray(j.habits) ? j.habits.filter(function (h) {
+    return h && typeof h.id === "string" && typeof h.name === "string" && h.name.trim();
+   }).map(function (h) {
+    return {
+     id: h.id,
+     name: h.name.trim(),
+     icon: typeof h.icon === "string" && h.icon.trim() ? h.icon.trim() : "🌿",
+     color: /^#[0-9a-f]{6}$/i.test(h.color || "") ? h.color : "#10B981"
+    };
+   }) : [];
+   lifeData.logs = (j.logs && typeof j.logs === "object" && !Array.isArray(j.logs)) ? j.logs : {};
+  }
+ } catch (e) {
+  lifeData = { S: {}, B: [], habits: [], logs: {} };
+ }
+}
+function saveLifeData() {
+ try { localStorage.setItem(LIFE_KEY, JSON.stringify(lifeData)); return true; }
+ catch (e) { alert("Impossible d'enregistrer les données personnelles sur cet appareil."); return false; }
+}
+
+/* ---- Capsule Dynamic Island & Bascule Glitch ---- */
+var isIslandExpanded = false, isSwitchingUniverse = false;
+
+function lifeBlockKey(b) { return b[0] + "|" + b[1] + "|" + b[2] + "|" + b[3]; }
+function isLifeBlockDone(dateStr, b) {
+ var dayLog = lifeData.logs[dateStr];
+ return !!(dayLog && dayLog.blocks && dayLog.blocks[lifeBlockKey(b)]);
+}
+function toggleLifeBlockDone(dateStr, b) {
+ if (!lifeData.logs[dateStr]) lifeData.logs[dateStr] = { blocks: {}, habits: {} };
+ if (!lifeData.logs[dateStr].blocks) lifeData.logs[dateStr].blocks = {};
+ var key = lifeBlockKey(b);
+ if (lifeData.logs[dateStr].blocks[key]) delete lifeData.logs[dateStr].blocks[key];
+ else lifeData.logs[dateStr].blocks[key] = true;
+ saveLifeData();
+}
+function isLifeHabitDone(dateStr, habitId) {
+ var dayLog = lifeData.logs[dateStr];
+ return !!(dayLog && dayLog.habits && dayLog.habits[habitId]);
+}
+function toggleLifeHabitDone(dateStr, habitId) {
+ if (!lifeData.logs[dateStr]) lifeData.logs[dateStr] = { blocks: {}, habits: {} };
+ if (!lifeData.logs[dateStr].habits) lifeData.logs[dateStr].habits = {};
+ if (lifeData.logs[dateStr].habits[habitId]) delete lifeData.logs[dateStr].habits[habitId];
+ else lifeData.logs[dateStr].habits[habitId] = true;
+ saveLifeData();
+}
+
+function todayLifeProgress() {
+ var dKey = dateKey(), tDay = todayNum();
+ var todayBlocks = lifeData.B.filter(function (b) { return b[0] === tDay && lifeData.S[b[1]]; });
+ var doneBlocks = todayBlocks.filter(function (b) { return isLifeBlockDone(dKey, b); }).length;
+ var doneHabits = lifeData.habits.filter(function (h) { return isLifeHabitDone(dKey, h.id); }).length;
+ return { done: doneBlocks + doneHabits, total: todayBlocks.length + lifeData.habits.length, blocks: todayBlocks };
+}
+
+function getSlotStatus(subjectMap, blockList, dayNames) {
+ var Q = blockList.filter(function (b) { return subjectMap[b[1]]; });
+ if (!Q.length) return { cur: null, nx: null, best: 0, empty: true };
+ var n = new Date(), d = todayNum(), t = n.getHours() + n.getMinutes() / 60, cur = null, nx = null, best = 1e9;
+ Q.forEach(function (b) { if (b[0] === d && b[2] <= t && t < b[3]) cur = b; });
+ if (!cur) {
+  Q.forEach(function (b) {
+   var x = ((b[0] - d + 7) % 7) * 24 + b[2] - t;
+   if (x < 0) x += 168;
+   if (x < best) { best = x; nx = b; }
+  });
+ }
+ return { cur: cur, nx: nx, best: best, empty: false, dayNames: dayNames };
+}
+
+function renderIsland() {
+ var curS = activeS(), curB = activeB(), days = activeDays();
+ var status = getSlotStatus(curS, curB, days);
+ var n = new Date(), t = n.getHours() + n.getMinutes() / 60, d = todayNum();
+
+ $("islandUni").textContent = isLife() ? "🌿" : "🎓";
+ $("islandTitle").textContent = activeTitle();
+
+ if (status.empty) {
+  $("islandStatus").textContent = isLife() ? "Planning vierge · appui long = Scolaire" : "Aucun créneau · appui long = Libre";
+  $("islandSlotLabel").textContent = "PLANNING";
+  $("islandSlotName").textContent = "Aucun créneau";
+  $("islandSlotTime").textContent = isLife() ? "Clique sur la grille ou + pour planifier" : "Clique sur un jour pour ajouter un cours";
+ } else if (status.cur) {
+  var cs = curS[status.cur[1]];
+  $("islandStatus").textContent = "En cours : " + cs[0] + " · reste " + dur(status.cur[3] - t);
+  $("islandSlotLabel").textContent = "EN COURS";
+  $("islandSlotName").textContent = cs[1] + " " + cs[0];
+  $("islandSlotTime").textContent = "Fin à " + fh(status.cur[3]) + " (encore " + dur(status.cur[3] - t) + ")";
+ } else {
+  var ns = curS[status.nx[1]];
+  var dayPrefix = (status.best >= 24 || status.nx[0] !== d) ? (days[status.nx[0] - 1] + " ") : "";
+  $("islandStatus").textContent = "À suivre : " + ns[0] + " · dans " + dur(status.best);
+  $("islandSlotLabel").textContent = "À SUIVRE";
+  $("islandSlotName").textContent = ns[1] + " " + ns[0];
+  $("islandSlotTime").textContent = dayPrefix + fh(status.nx[2]) + " – " + fh(status.nx[3]);
+ }
+
+ var totalHours = curB.reduce(function (a, b) { return a + (b[3] - b[2]); }, 0);
+ var alertEl = $("islandAlert");
+
+ if (!isLife()) {
+  var pendingHw = homework.filter(function (x) { return x.status !== "done"; });
+  var overdueHw = pendingHw.filter(homeworkIsOverdue);
+  if (overdueHw.length) { alertEl.hidden = false; alertEl.textContent = overdueHw.length + " retard"; }
+  else if (pendingHw.length) { alertEl.hidden = false; alertEl.textContent = pendingHw.length + " devoir" + (pendingHw.length > 1 ? "s" : ""); }
+  else alertEl.hidden = true;
+
+  $("islandWeekLabel").textContent = "SEMAINE SCOLAIRE";
+  $("islandWeekMain").textContent = Math.round(totalHours * 10) / 10 + " h · " + curB.length + " créneaux";
+  $("islandWeekSub").textContent = overdueHw.length
+   ? overdueHw.length + " devoir(s) en retard !"
+   : pendingHw.length ? pendingHw.length + " devoir(s) à faire" : "Tous les devoirs sont à jour";
+ } else {
+  var prog = todayLifeProgress();
+  if (prog.total > 0) { alertEl.hidden = false; alertEl.textContent = prog.done + "/" + prog.total; }
+  else alertEl.hidden = true;
+
+  $("islandWeekLabel").textContent = "SEMAINE LIBRE (7J)";
+  $("islandWeekMain").textContent = prog.total ? (prog.done + "/" + prog.total + " faits aujourd’hui") : (Math.round(totalHours * 10) / 10 + " h planifiées");
+  $("islandWeekSub").textContent = lifeData.habits.length + " habitude(s) · " + curB.length + " créneau(x)";
+ }
+}
+
+function setIslandExpanded(open) {
+ isIslandExpanded = !!open;
+ $("island").setAttribute("aria-expanded", isIslandExpanded ? "true" : "false");
+ $("islandExpanded").hidden = !isIslandExpanded;
+}
+
+function applyUniverse(target) {
+ meta.universe = target === "life" ? "life" : "school";
+ saveMeta();
+ document.documentElement.dataset.universe = meta.universe;
+ document.title = "My EDT · " + activeTitle();
+ var themeMeta = document.querySelector('meta[name="theme-color"]');
+ if (themeMeta) themeMeta.setAttribute("content", isLife() ? "#10B981" : "#F5B301");
+
+ [].forEach.call(document.querySelectorAll(".appnav button[data-uni]"), function (btn) {
+  btn.hidden = btn.dataset.uni !== meta.universe;
+ });
+
+ var t = todayNum(), maxD = activeDays().length;
+ sel = (t >= 1 && t <= maxD) ? t : 1;
+
+ setIslandExpanded(false);
+ showAppView("schedule");
+ render();
+ if (isLife()) { renderLifeHabits(); renderLifeStats(); }
+}
+
+function triggerUniverseSwitch() {
+ if (isSwitchingUniverse) return;
+ isSwitchingUniverse = true;
+ var target = isLife() ? "school" : "life";
+ $("glitchBadge").textContent = target === "life" ? "🌿" : "🎓";
+ $("glitchTitle").textContent = target === "life" ? meta.lifeTitle.toUpperCase() : meta.schoolTitle.toUpperCase();
+
+ if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+  applyUniverse(target);
+  isSwitchingUniverse = false;
+  return;
+ }
+
+ var ov = $("glitchOverlay");
+ ov.hidden = false;
+ ov.classList.remove("active");
+ void ov.offsetWidth;
+ ov.classList.add("active");
+
+ setTimeout(function () { applyUniverse(target); }, 220);
+ setTimeout(function () {
+  ov.classList.remove("active");
+  ov.hidden = true;
+  isSwitchingUniverse = false;
+ }, 540);
+}
+
+(function setupIslandControls() {
+ var island = $("island"), holdTimer = null, startX = 0, startY = 0, longPressed = false, ignoreClickUntil = 0;
+
+ function clearHold() {
+  if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
+  island.classList.remove("pressing");
+ }
+
+ island.addEventListener("pointerdown", function (e) {
+  if (e.button && e.button !== 0) return;
+  if (e.target.closest("#islandEditTitle")) return;
+  clearHold();
+  longPressed = false;
+  startX = e.clientX;
+  startY = e.clientY;
+  island.classList.add("pressing");
+  holdTimer = setTimeout(function () {
+   holdTimer = null;
+   longPressed = true;
+   ignoreClickUntil = Date.now() + 400;
+   island.classList.remove("pressing");
+   triggerUniverseSwitch();
+  }, 550);
+ });
+
+ island.addEventListener("pointermove", function (e) {
+  if (!holdTimer) return;
+  if (Math.hypot(e.clientX - startX, e.clientY - startY) > 12) clearHold();
+ });
+ island.addEventListener("pointerup", clearHold);
+ island.addEventListener("pointercancel", clearHold);
+ island.addEventListener("pointerleave", clearHold);
+ island.addEventListener("contextmenu", function (e) {
+  if (holdTimer || longPressed || Date.now() < ignoreClickUntil) e.preventDefault();
+ });
+
+ island.addEventListener("click", function (e) {
+  if (e.target.closest("#islandEditTitle")) return;
+  if (longPressed || Date.now() < ignoreClickUntil) {
+   longPressed = false;
+   e.preventDefault();
+   return;
+  }
+  setIslandExpanded(!isIslandExpanded);
+ });
+
+ island.addEventListener("keydown", function (e) {
+  if (e.target.closest("#islandEditTitle")) return;
+  if (e.key === "Enter" || e.key === " ") {
+   e.preventDefault();
+   setIslandExpanded(!isIslandExpanded);
+  }
+ });
+
+ $("islandEditTitle").onclick = function (e) {
+  e.stopPropagation();
+  $("titleSchoolInput").value = meta.schoolTitle;
+  $("titleLifeInput").value = meta.lifeTitle;
+  $("dTitle").showModal();
+ };
+ $("titleCancel").onclick = function () { $("dTitle").close(); };
+ $("titleForm").onsubmit = function (e) {
+  e.preventDefault();
+  var sc = $("titleSchoolInput").value.trim(), lf = $("titleLifeInput").value.trim();
+  if (sc) meta.schoolTitle = sc;
+  if (lf) meta.lifeTitle = lf;
+  saveMeta();
+  document.title = "My EDT · " + activeTitle();
+  $("dTitle").close();
+  renderIsland();
+ };
+})();
+
+/* ---- Rendu grille (6 jours Scolaire / 7 jours Libre) ---- */
+var td = todayNum(), sel = (td >= 1 && td <= 6) ? td : 1, tl = $("tl"), tb = $("tabs"), lg = $("l"), H = $("hero");
 var mobileQuery = window.matchMedia("(max-width: 720px)");
 
 function setDisplayMode(e) {
@@ -119,11 +443,9 @@ function burst(x, y, em) {
  }
 }
 
-function weekdayIndex() { var d = new Date().getDay(); return d === 0 ? 7 : d; }
-
-function nextClassInfo(subjectId) {
- var now = new Date(), today = weekdayIndex(), minutes = now.getHours() * 60 + now.getMinutes(), best = null;
- B.forEach(function (b) {
+function nextClassInfo(subjectId, blockList) {
+ var now = new Date(), today = todayNum(), minutes = now.getHours() * 60 + now.getMinutes(), best = null;
+ blockList.forEach(function (b) {
   if (b[1] !== subjectId) return;
   var offset = (b[0] - today + 7) % 7, start = b[2] * 60, end = b[3] * 60;
   if (offset === 0 && end <= minutes) return;
@@ -136,13 +458,13 @@ function nextClassInfo(subjectId) {
 }
 
 function countdownText(info) {
- if (!info) return "Aucun cours programmé";
- if (info.ongoing) return "Cours en cours · fin à " + fh(info.b[3]);
+ if (!info) return isLife() ? "Aucun créneau programmé" : "Aucun cours programmé";
+ if (info.ongoing) return (isLife() ? "En cours" : "Cours en cours") + " · fin à " + fh(info.b[3]);
  var m = info.delta, days = Math.floor(m / 1440), hours = Math.floor(m % 1440 / 60), mins = m % 60, parts = [];
  if (days) parts.push(days + " j");
  if (hours) parts.push(hours + " h");
  if (!days && mins) parts.push(mins + " min");
- return "Prochain cours dans " + (parts.join(" ") || "moins d’une minute");
+ return (isLife() ? "Prochaine séance dans " : "Prochain cours dans ") + (parts.join(" ") || "moins d’une minute");
 }
 
 function homeworkCounts() {
@@ -154,34 +476,81 @@ function homeworkCounts() {
 }
 
 function render() {
+ var curS = activeS(), curB = activeB(), days = activeDays(), numDays = days.length;
+ td = todayNum();
+ if (sel < 1 || sel > numDays) sel = 1;
+
  T0 = 7; T1 = 19;
- B.forEach(function (b) { T0 = Math.min(T0, Math.floor(b[2])); T1 = Math.max(T1, Math.ceil(b[3])); });
+ curB.forEach(function (b) { T0 = Math.min(T0, Math.floor(b[2])); T1 = Math.max(T1, Math.ceil(b[3])); });
  tl.style.setProperty("--rows", T1 - T0);
+ tl.classList.toggle("cols-6", numDays === 6);
+ tl.classList.toggle("cols-7", numDays === 7);
+
  var h = "<div class='dh'></div>";
- DN.forEach(function (n, i) { h += "<div class='dh" + (td == i + 1 ? " today" : "") + (sel == i + 1 ? " on" : "") + "' data-d='" + (i + 1) + "'>" + n + "</div>"; });
+ days.forEach(function (n, i) { h += "<div class='dh" + (td == i + 1 ? " today" : "") + (sel == i + 1 ? " on" : "") + "' data-d='" + (i + 1) + "'>" + n + "</div>"; });
  h += "<div class='gut'>";
  for (var i = T0; i < T1; i++) h += "<div class='hl'>" + i + "h</div>";
  h += "</div>";
- for (var d = 1; d <= 5; d++) h += "<div class='col" + (td == d ? " today" : "") + (sel == d ? " on" : "") + "' data-d='" + d + "'></div>";
+ for (var d = 1; d <= numDays; d++) h += "<div class='col" + (td == d ? " today" : "") + (sel == d ? " on" : "") + "' data-d='" + d + "'></div>";
  tl.innerHTML = h;
 
- var k = 0, counts = homeworkCounts();
- B.forEach(function (b, i) {
-  var s = S[b[1]]; if (!s) return;
+ var k = 0, counts = homeworkCounts(), tKey = dateKey();
+ curB.forEach(function (b, i) {
+  var s = curS[b[1]]; if (!s) return;
   var e = document.createElement("div");
   e.className = "b" + (b[1] == "free" ? " free" : "");
-  e.style.cssText = "--c:" + s[2] + ";--f:" + s[3] + ";top:calc(" + (b[2] - T0) + "*var(--h) + 2px);height:calc(" + (b[3] - b[2]) + "*var(--h) - 4px);animation-delay:" + (k++ * 0.07) + "s";
-  var count = counts[b[1]] || 0, info = nextClassInfo(b[1]);
-  e.innerHTML = "<span class='ic " + s[4] + "'>" + esc(s[1]) + "</span><div class='t'><b>" + esc(s[0]) + "</b><span>" + fh(b[2]) + " – " + fh(b[3]) + "</span><span class='subbadge " + (count ? "" : "none") + "'>" + (count ? count + " devoir" + (count > 1 ? "s" : "") + " à faire" : "Aucun devoir") + "</span><span class='next-subject'>" + esc(countdownText(info)) + "</span></div>";
+  e.style.cssText = "--c:" + s[2] + ";--f:" + s[3] + ";top:calc(" + (b[2] - T0) + "*var(--h) + 2px);height:calc(" + (b[3] - b[2]) + "*var(--h) - 4px);animation-delay:" + (k++ * 0.06) + "s";
+  var info = nextClassInfo(b[1], curB);
+
+  if (!isLife()) {
+   var count = counts[b[1]] || 0;
+   e.innerHTML = "<span class='ic " + s[4] + "'>" + esc(s[1]) + "</span><div class='t'><b>" + esc(s[0]) + "</b><span>" + fh(b[2]) + " – " + fh(b[3]) + "</span><span class='subbadge " + (count ? "" : "none") + "'>" + (count ? count + " devoir" + (count > 1 ? "s" : "") + " à faire" : "Aucun devoir") + "</span><span class='next-subject'>" + esc(countdownText(info)) + "</span></div>";
+  } else {
+   var isTodayBlock = b[0] === td;
+   var doneToday = isTodayBlock && isLifeBlockDone(tKey, b);
+   e.innerHTML = "<span class='ic " + s[4] + "'>" + esc(s[1]) + "</span><div class='t'><b>" + esc(s[0]) + "</b><span>" + fh(b[2]) + " – " + fh(b[3]) + "</span>" + (isTodayBlock ? "<button type='button' class='life-done-btn" + (doneToday ? " checked" : "") + "'>" + (doneToday ? "✅ Fait aujourd’hui" : "○ Marquer fait") + "</button>" : "<span class='next-subject'>" + esc(countdownText(info)) + "</span>") + "</div>";
+   if (isTodayBlock) {
+    e.querySelector(".life-done-btn").onclick = function (ev) {
+     ev.stopPropagation();
+     toggleLifeBlockDone(tKey, b);
+     render();
+     renderLifeHabits();
+     renderLifeStats();
+     renderIsland();
+    };
+   }
+  }
+
   e.querySelector(".ic").onclick = function (ev) { ev.stopPropagation(); burst(ev.clientX, ev.clientY, s[1]); };
-  e.onclick = function () { openB(i); };
-  tl.querySelector(".col[data-d='" + b[0] + "']").appendChild(e);
+  e.onclick = function (ev) { ev.stopPropagation(); openB(i); };
+  var targetCol = tl.querySelector(".col[data-d='" + b[0] + "']");
+  if (targetCol) targetCol.appendChild(e);
+ });
+
+ [].forEach.call(tl.querySelectorAll(".col[data-d]"), function (col) {
+  var dayNum = +col.dataset.d;
+  if (!col.children.length && (isLife() || dayNum === 6)) {
+   var hint = document.createElement("div");
+   hint.className = "col-empty-hint";
+   hint.textContent = dayNum === 6 && !isLife()
+    ? "➕ Cliquer pour ajouter un cours / TD"
+    : "➕ Cliquer pour planifier";
+   col.appendChild(hint);
+  }
+  col.onclick = function (ev) {
+   if (ev.target.closest(".b")) return;
+   var rect = col.getBoundingClientRect();
+   var relY = Math.max(0, ev.clientY - rect.top);
+   var rowPx = rect.height / Math.max(1, T1 - T0);
+   var clickedHour = Math.min(T1 - 1, Math.max(T0, Math.floor(T0 + relY / rowPx)));
+   openB(-1, dayNum, clickedHour);
+  };
  });
 
  tb.innerHTML = "";
  tb.setAttribute("role", "tablist");
  tb.setAttribute("aria-label", "Choisir le jour à afficher");
- DN.forEach(function (n, i) {
+ days.forEach(function (n, i) {
   var x = document.createElement("button");
   x.textContent = n.slice(0, 3);
   x.className = sel == i + 1 ? "on" : "";
@@ -198,9 +567,9 @@ function render() {
  });
 
  lg.innerHTML = "";
- Object.keys(S).forEach(function (q) {
+ Object.keys(curS).forEach(function (q) {
   if (q == "free") return;
-  var s = S[q], c = document.createElement("span");
+  var s = curS[q], c = document.createElement("span");
   c.className = "chip";
   c.style.cssText = "background:" + s[2] + ";color:" + s[3];
   c.textContent = s[1] + " " + s[0];
@@ -211,16 +580,20 @@ function render() {
 }
 
 function tick() {
- var Q = B.filter(function (b) { return S[b[1]]; });
- if (!Q.length) {
-  H.innerHTML = "<div class='hero' style='background:var(--card);color:var(--tx)'><div class='big'>📅</div><div class='grow'><div class='lab'>EMPLOI DU TEMPS</div><h2>Aucun cours programmé</h2><p>Ajoute un cours avec le bouton ➕ pour commencer.</p></div></div>";
+ var curS = activeS(), curB = activeB(), days = activeDays();
+ var status = getSlotStatus(curS, curB, days);
+ if (status.empty) {
+  H.innerHTML = isLife()
+   ? "<div class='hero' style='background:var(--card);color:var(--tx)'><div class='big'>🌿</div><div class='grow'><div class='lab'>LIBRE &amp; HABITUDES</div><h2>Planning 7 jours vierge</h2><p>Clique sur un jour de la grille, sur ➕ ou va dans « Habitudes &amp; Suivi » pour choisir tes activités.</p></div></div>"
+   : "<div class='hero' style='background:var(--card);color:var(--tx)'><div class='big'>📅</div><div class='grow'><div class='lab'>EMPLOI DU TEMPS</div><h2>Aucun cours programmé</h2><p>Ajoute un cours avec le bouton ➕ ou en cliquant sur la grille.</p></div></div>";
   hk = "";
+  renderIsland();
   return;
  }
- var n = new Date(), d = n.getDay(), t = n.getHours() + n.getMinutes() / 60, cur = null, nx = null, best = 1e9;
- Q.forEach(function (b) { if (b[0] == d && b[2] <= t && t < b[3]) cur = b; });
- if (!cur) Q.forEach(function (b) { var x = ((b[0] - d + 7) % 7) * 24 + b[2] - t; if (x < 0) x += 168; if (x < best) { best = x; nx = b; } });
- var b = cur || nx, s = S[b[1]], key = (cur ? "c" : "n") + b.join();
+
+ var n = new Date(), d = todayNum(), t = n.getHours() + n.getMinutes() / 60;
+ var cur = status.cur, nx = status.nx, best = status.best;
+ var b = cur || nx, s = curS[b[1]], key = (isLife() ? "L" : "S") + (cur ? "c" : "n") + b.join();
  if (key != hk) {
   hk = key;
   H.innerHTML = "<div class='hero' style='background:linear-gradient(135deg," + s[2] + "," + s[2] + "cc);color:" + s[3] + "'><div class='big'>" + esc(s[1]) + "</div><div class='grow'><div class='lab'>" + (cur ? "<span class='dot'></span>EN COURS" : "À SUIVRE") + "</div><h2>" + esc(s[0]) + "</h2><p id='pt'></p>" + (cur ? "<div class='pb'><div id='pf'></div></div>" : "") + "</div></div>";
@@ -230,7 +603,7 @@ function tick() {
   p.textContent = "Encore " + dur(b[3] - t) + " · fin à " + fh(b[3]);
   $("pf").style.width = ((t - b[2]) / (b[3] - b[2]) * 100) + "%";
  } else {
-  p.textContent = "Dans " + dur(best) + " · " + (best >= 24 || b[0] != d ? DN[b[0] - 1] + " " : "") + fh(b[2]) + " – " + fh(b[3]);
+  p.textContent = "Dans " + dur(best) + " · " + (best >= 24 || b[0] != d ? days[b[0] - 1] + " " : "") + fh(b[2]) + " – " + fh(b[3]);
  }
  var o = document.querySelector(".now"); if (o) o.remove();
  var c = tl.querySelector(".col.today");
@@ -240,9 +613,234 @@ function tick() {
   o.style.top = "calc(" + (t - T0) + "*var(--h))";
   c.appendChild(o);
  }
+ renderIsland();
 }
 
-/* ---- Devoirs à faire & rappels locaux ---- */
+/* ---- Univers 2 : Habitudes, panoplie & bilan semaine ---- */
+var lifeHabitEditId = null;
+
+function ensureLifePresetCategory(preset) {
+ if (!lifeData.S[preset.id]) {
+  lifeData.S[preset.id] = [preset.name, preset.icon, preset.color, fgOf(preset.color), preset.anim || "bob"];
+  saveLifeData();
+ }
+ return preset.id;
+}
+
+function addLifeHabitFromPreset(preset) {
+ var exists = lifeData.habits.some(function (h) { return h.name.toLocaleLowerCase() === preset.name.toLocaleLowerCase(); });
+ if (exists) {
+  alert("« " + preset.name + " » est déjà dans tes habitudes quotidiennes.");
+  return;
+ }
+ lifeData.habits.push({
+  id: "hab-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+  name: preset.name,
+  icon: preset.icon,
+  color: preset.color
+ });
+ saveLifeData();
+ renderLifeHabits();
+ renderLifeStats();
+ renderIsland();
+}
+
+function computeHabitStreak(habitId) {
+ var streak = 0, d = new Date();
+ if (!isLifeHabitDone(dateKey(d), habitId)) d.setDate(d.getDate() - 1);
+ for (var i = 0; i < 365; i++) {
+  if (isLifeHabitDone(dateKey(d), habitId)) {
+   streak++;
+   d.setDate(d.getDate() - 1);
+  } else break;
+ }
+ return streak;
+}
+
+function openLifeHabitModal(habitId) {
+ var h = habitId ? lifeData.habits.find(function (x) { return x.id === habitId; }) : null;
+ lifeHabitEditId = h ? h.id : null;
+ $("lifeHabitDialogTitle").textContent = h ? "✏️ Modifier l’habitude" : "＋ Habitude quotidienne";
+ $("lifeHabitIcon").value = h ? h.icon : "🌿";
+ $("lifeHabitName").value = h ? h.name : "";
+ $("lifeHabitColor").value = h ? h.color : "#10B981";
+ $("lifeHabitError").textContent = "";
+ $("lifeHabitDelete").style.display = h ? "" : "none";
+ $("dLifeHabit").showModal();
+}
+
+function renderLifeHabits() {
+ var dKey = dateKey(), tDay = todayNum();
+
+ var todayBlocks = lifeData.B.filter(function (b) { return b[0] === tDay && lifeData.S[b[1]]; }).sort(function (a, b) { return a[2] - b[2]; });
+ var blocksBox = $("lifeTodayBlocks");
+ if (!todayBlocks.length) {
+  blocksBox.innerHTML = "<div class='hwempty'>Aucune activité planifiée pour aujourd’hui (" + DN_LIFE[tDay - 1] + "). Ajoute un créneau depuis le planning 7j ou la panoplie ci-dessous.</div>";
+ } else {
+  blocksBox.innerHTML = "";
+  todayBlocks.forEach(function (b) {
+   var s = lifeData.S[b[1]], done = isLifeBlockDone(dKey, b);
+   var card = document.createElement("article");
+   card.className = "hwcard";
+   var chk = document.createElement("input");
+   chk.type = "checkbox";
+   chk.className = "hwcheck";
+   chk.checked = done;
+   chk.onchange = function () {
+    toggleLifeBlockDone(dKey, b);
+    renderLifeHabits();
+    renderLifeStats();
+    render();
+   };
+   var main = document.createElement("div");
+   main.innerHTML = "<div class='hwtitle'" + (done ? " style='text-decoration:line-through'" : "") + ">" + esc(s[1] + " " + s[0]) + "</div><div class='hwmeta'><span>🕒 " + fh(b[2]) + " – " + fh(b[3]) + " (" + dur(b[3] - b[2]) + ")</span><span class='hwtag " + (done ? "done" : "pending") + "'>" + (done ? "Accompli" : "À faire") + "</span></div>";
+   card.appendChild(chk);
+   card.appendChild(main);
+   blocksBox.appendChild(card);
+  });
+ }
+
+ var habitsBox = $("lifeHabitsList");
+ if (!lifeData.habits.length) {
+  habitsBox.innerHTML = "<div class='hwempty'>Aucune habitude quotidienne configurée. Crée-en une ou pioche dans la panoplie ci-dessous !</div>";
+ } else {
+  habitsBox.innerHTML = "";
+  lifeData.habits.forEach(function (h) {
+   var done = isLifeHabitDone(dKey, h.id), streak = computeHabitStreak(h.id);
+   var card = document.createElement("article");
+   card.className = "hwcard";
+   var chk = document.createElement("input");
+   chk.type = "checkbox";
+   chk.className = "hwcheck";
+   chk.checked = done;
+   chk.onchange = function () {
+    toggleLifeHabitDone(dKey, h.id);
+    renderLifeHabits();
+    renderLifeStats();
+    renderIsland();
+   };
+   var main = document.createElement("div");
+   main.innerHTML = "<div class='hwtitle'" + (done ? " style='text-decoration:line-through'" : "") + ">" + esc(h.icon + " " + h.name) + "</div><div class='hwmeta'><span class='streak-pill'>🔥 " + streak + " j de suite</span><span class='hwtag " + (done ? "done" : "pending") + "'>" + (done ? "Fait aujourd’hui" : "À faire") + "</span></div>";
+   var acts = document.createElement("div");
+   acts.className = "hwacts";
+   var edBtn = document.createElement("button");
+   edBtn.type = "button";
+   edBtn.textContent = "✏️";
+   edBtn.setAttribute("aria-label", "Modifier " + h.name);
+   edBtn.onclick = function () { openLifeHabitModal(h.id); };
+   acts.appendChild(edBtn);
+   card.appendChild(chk);
+   card.appendChild(main);
+   card.appendChild(acts);
+   habitsBox.appendChild(card);
+  });
+ }
+
+ var grid = $("lifePresetGrid");
+ grid.innerHTML = "";
+ LIFE_PRESETS.forEach(function (preset) {
+  var card = document.createElement("div");
+  card.className = "life-preset-card";
+  card.innerHTML = "<div class='life-preset-top'><span class='life-preset-ic' style='background:" + preset.color + ";color:" + fgOf(preset.color) + "'>" + esc(preset.icon) + "</span><strong>" + esc(preset.name) + "</strong></div><div class='life-preset-actions'><button type='button' data-add-plan>＋ Planning 7j</button><button type='button' data-add-hab>＋ Habitude</button></div>";
+  card.querySelector("[data-add-plan]").onclick = function () {
+   var catId = ensureLifePresetCategory(preset);
+   render();
+   openB(-1, todayNum(), 18, catId);
+  };
+  card.querySelector("[data-add-hab]").onclick = function () {
+   addLifeHabitFromPreset(preset);
+  };
+  grid.appendChild(card);
+ });
+}
+
+function currentWeekDates() {
+ var now = new Date(), mondayOffset = todayNum() - 1, res = [];
+ for (var i = 0; i < 7; i++) {
+  var d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - mondayOffset + i);
+  res.push({ day: i + 1, label: DN_LIFE[i].slice(0, 3), key: dateKey(d) });
+ }
+ return res;
+}
+
+function renderLifeStats() {
+ var week = currentWeekDates(), prog = todayLifeProgress();
+ var totalWeekExpected = 0, totalWeekDone = 0, barsHtml = "";
+
+ week.forEach(function (w) {
+  var dayBlocks = lifeData.B.filter(function (b) { return b[0] === w.day && lifeData.S[b[1]]; });
+  var doneBlocks = dayBlocks.filter(function (b) { return isLifeBlockDone(w.key, b); }).length;
+  var doneHabits = lifeData.habits.filter(function (h) { return isLifeHabitDone(w.key, h.id); }).length;
+  var expected = dayBlocks.length + lifeData.habits.length;
+  var done = doneBlocks + doneHabits;
+  totalWeekExpected += expected;
+  totalWeekDone += done;
+  var pct = expected ? Math.round((done / expected) * 100) : 0;
+  barsHtml += "<div class='life-day-bar'><div class='life-bar-track'><div class='life-bar-fill' style='height:" + pct + "%'></div></div><strong>" + w.label + "</strong><span>" + done + "/" + expected + "</span></div>";
+ });
+
+ var weekPct = totalWeekExpected ? Math.round((totalWeekDone / totalWeekExpected) * 100) : 0;
+ var plannedHours = lifeData.B.reduce(function (a, b) { return a + (b[3] - b[2]); }, 0);
+
+ $("lifeStatsSummary").innerHTML =
+  "<div class='grade-stat'><strong>" + (prog.total ? prog.done + "/" + prog.total : "0") + "</strong><span>Accompli aujourd’hui</span></div>" +
+  "<div class='grade-stat'><strong>" + weekPct + "%</strong><span>Régularité semaine (" + totalWeekDone + "/" + totalWeekExpected + ")</span></div>" +
+  "<div class='grade-stat'><strong>" + (Math.round(plannedHours * 10) / 10) + " h</strong><span>Temps planifié (7 jours)</span></div>";
+
+ $("lifeWeekBars").innerHTML = barsHtml;
+
+ var breakdownHtml = "";
+ Object.keys(lifeData.S).forEach(function (catId) {
+  var s = lifeData.S[catId];
+  var blocks = lifeData.B.filter(function (b) { return b[1] === catId; });
+  var hrs = blocks.reduce(function (a, b) { return a + (b[3] - b[2]); }, 0);
+  breakdownHtml += "<div class='grade-row'><div><strong>" + esc(s[1] + " " + s[0]) + "</strong><small>" + blocks.length + " créneau(x) dans la semaine</small></div><strong>" + (Math.round(hrs * 10) / 10) + " h/sem</strong><span></span></div>";
+ });
+ lifeData.habits.forEach(function (h) {
+  var doneDays = week.filter(function (w) { return isLifeHabitDone(w.key, h.id); }).length;
+  breakdownHtml += "<div class='grade-row'><div><strong>" + esc(h.icon + " " + h.name) + "</strong><small>Habitude quotidienne · 🔥 " + computeHabitStreak(h.id) + " j de série</small></div><strong>" + doneDays + "/7 j</strong><span></span></div>";
+ });
+ $("lifeBreakdown").innerHTML = breakdownHtml || "<div class='grade-empty'>Ajoute des activités ou des habitudes pour voir ton bilan détaillé.</div>";
+}
+
+$("lifeHabitAdd").onclick = function () { openLifeHabitModal(null); };
+$("lifeActivityAdd").onclick = function () { openB(-1, todayNum(), 18); };
+$("lifeHabitCancel").onclick = function () { $("dLifeHabit").close(); };
+$("lifeHabitDelete").onclick = function () {
+ if (!lifeHabitEditId) return;
+ var h = lifeData.habits.find(function (x) { return x.id === lifeHabitEditId; });
+ if (h && confirm("Supprimer l’habitude « " + h.name + " » ?")) {
+  lifeData.habits = lifeData.habits.filter(function (x) { return x.id !== lifeHabitEditId; });
+  saveLifeData();
+  $("dLifeHabit").close();
+  renderLifeHabits();
+  renderLifeStats();
+  renderIsland();
+ }
+};
+$("lifeHabitForm").onsubmit = function (e) {
+ e.preventDefault();
+ var name = $("lifeHabitName").value.trim(), icon = $("lifeHabitIcon").value.trim() || "🌿", color = $("lifeHabitColor").value;
+ if (!name) { $("lifeHabitError").textContent = "Donne un nom à cette habitude."; return; }
+ if (lifeHabitEditId) {
+  var h = lifeData.habits.find(function (x) { return x.id === lifeHabitEditId; });
+  if (h) { h.name = name; h.icon = icon; h.color = color; }
+ } else {
+  lifeData.habits.push({ id: "hab-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name: name, icon: icon, color: color });
+ }
+ saveLifeData();
+ $("dLifeHabit").close();
+ renderLifeHabits();
+ renderLifeStats();
+ renderIsland();
+};
+
+/* ============================================================================
+   PARTIE 2 — MODULES MÉTIER
+   (anciennement script.js)
+   ============================================================================ */
+
+/* ---- Devoirs à faire & rappels locaux (Univers Scolaire) ---- */
 var HOMEWORK_KEY = "edt-homework-v1", homework = [], homeworkEditId = null, homeworkFilter = "upcoming";
 var REMINDER_SETTINGS_KEY = "edt-homework-reminders-v1", REMINDER_SENT_KEY = "edt-homework-reminders-sent-v1";
 var reminderTimer = null, swRegistration = null, swState = "checking", swError = "";
@@ -767,13 +1365,30 @@ $("hwDelete").onclick = function () {
  }
 };
 
-/* ---- Éditeur de cours ---- */
-function openB(i) {
- $("bs").innerHTML = Object.keys(S).map(function (k) { return "<option value='" + esc(k) + "'>" + esc(S[k][1]) + " " + esc(S[k][0]) + "</option>"; }).join("");
- $("bd").innerHTML = DN.map(function (n, j) { return "<option value='" + (j + 1) + "'>" + n + "</option>"; }).join("");
+/* ---- Éditeur de créneaux (partagé Univers 1 & Univers 2 sans conflit) ---- */
+function openB(i, presetDay, presetStart, presetCatId) {
+ var curS = activeS(), curB = activeB(), days = activeDays();
+ var keys = Object.keys(curS);
+ if (!keys.length) {
+  alert("Ajoute d’abord au moins une activité dans 🎨 (ou choisis-en une depuis « Habitudes & Suivi »).");
+  $("mat").click();
+  return;
+ }
+
+ $("bsLab").textContent = isLife() ? "Activité" : "Matière";
+ $("bs").innerHTML = keys.map(function (k) { return "<option value='" + esc(k) + "'>" + esc(curS[k][1]) + " " + esc(curS[k][0]) + "</option>"; }).join("");
+ $("bd").innerHTML = days.map(function (n, j) { return "<option value='" + (j + 1) + "'>" + n + "</option>"; }).join("");
+
  ed = i;
- var b = i >= 0 ? B[i] : [sel, Object.keys(S)[0], 8, 10];
- $("bt").textContent = i >= 0 ? "✏️ Modifier le cours" : "➕ Ajouter un cours";
+ var dDay = (presetDay >= 1 && presetDay <= days.length) ? presetDay : sel;
+ var dStart = Number.isFinite(presetStart) ? presetStart : 8;
+ var dEnd = Math.min(23.5, dStart + 2);
+ var dCat = (presetCatId && curS[presetCatId]) ? presetCatId : keys[0];
+ var b = i >= 0 ? curB[i] : [dDay, dCat, dStart, dEnd];
+
+ $("bt").textContent = i >= 0
+  ? (isLife() ? "✏️ Modifier l’activité" : "✏️ Modifier le cours")
+  : (isLife() ? "➕ Ajouter une activité" : "➕ Ajouter un cours");
  $("bs").value = b[1];
  $("bd").value = b[0];
  $("b1").value = t2s(b[2]);
@@ -782,75 +1397,113 @@ function openB(i) {
  $("bdl").style.display = i >= 0 ? "" : "none";
  $("dB").showModal();
 }
+
 $("add").onclick = function () { openB(-1); };
 $("bcx").onclick = function () { $("dB").close(); };
-$("bdl").onclick = function () { B.splice(ed, 1); save(); $("dB").close(); render(); };
+$("bdl").onclick = function () {
+ activeB().splice(ed, 1);
+ saveActive();
+ $("dB").close();
+ render();
+ if (isLife()) { renderLifeHabits(); renderLifeStats(); }
+};
 $("bsv").onclick = function () {
+ var curS = activeS(), curB = activeB();
  var d = +$("bd").value, s = s2t($("b1").value), e = s2t($("b2").value), k = $("bs").value;
  if (isNaN(s) || isNaN(e)) { $("be").textContent = "Choisis une heure de début et de fin."; return; }
  if (e <= s) { $("be").textContent = "La fin doit être après le début."; return; }
- var o = B.filter(function (b, j) { return j != ed && b[0] == d && s < b[3] && e > b[2]; })[0];
- if (o) { $("be").textContent = "Ce créneau chevauche : " + S[o[1]][0] + " (" + fh(o[2]) + " – " + fh(o[3]) + ")"; return; }
+ var o = curB.filter(function (b, j) { return j != ed && b[0] == d && s < b[3] && e > b[2]; })[0];
+ if (o) { $("be").textContent = "Ce créneau chevauche : " + curS[o[1]][0] + " (" + fh(o[2]) + " – " + fh(o[3]) + ")"; return; }
  var nb = [d, k, s, e];
- if (ed >= 0) B[ed] = nb; else B.push(nb);
- save();
+ if (ed >= 0) curB[ed] = nb; else curB.push(nb);
+ saveActive();
  sel = d;
  $("dB").close();
  render();
+ if (isLife()) { renderLifeHabits(); renderLifeStats(); }
 };
 
-/* ---- Éditeur de matières ---- */
-var PAL = ["#E76F51", "#2A9D8F", "#8E44AD", "#F4A261", "#3498DB", "#E91E63", "#16A085", "#F39C12"];
+/* ---- Éditeur de matières / activités (partagé Univers 1 & Univers 2) ---- */
+var PAL = ["#10B981", "#06B6D4", "#3B82F6", "#8B5CF6", "#F59E0B", "#EC4899", "#E76F51", "#16A085"];
 function row(k, s) {
  return "<div class='mr' data-k='" + esc(k) + "'><input class='me' maxlength='4' value=\"" + esc(s[1]) + "\"><input class='mn' placeholder='Nom' value=\"" + esc(s[0]) + "\"><input class='mc' type='color' value='" + esc(s[2]) + "'><button type='button' class='mx' title='Supprimer'>🗑️</button></div>";
 }
+
 $("mat").onclick = function () {
- $("ml").innerHTML = Object.keys(S).filter(function (k) { return k != "free"; }).map(function (k) { return row(k, S[k]); }).join("");
+ var curS = activeS();
+ $("mt").textContent = isLife() ? "🎨 Mes activités (7j)" : "🎨 Mes matières";
+ $("ms").textContent = isLife()
+  ? "Ajoute ou personnalise les catégories de ton planning 7 jours."
+  : "Change le nom, l'emoji ou la couleur, ajoute-en de nouvelles.";
+ $("ml").innerHTML = Object.keys(curS).filter(function (k) { return k != "free"; }).map(function (k) { return row(k, curS[k]); }).join("");
  $("dM").showModal();
 };
+
 $("madd").onclick = function () {
  var d = document.createElement("div");
- d.innerHTML = row("", ["", "📚", PAL[Math.floor(Math.random() * PAL.length)]]);
+ d.innerHTML = row("", ["", isLife() ? "🌿" : "📚", PAL[Math.floor(Math.random() * PAL.length)]]);
  $("ml").appendChild(d.firstChild);
  $("ml").scrollTop = 9999;
 };
+
 $("ml").onclick = function (e) {
  if (!e.target.classList.contains("mx")) return;
  var r = e.target.parentNode, k = r.dataset.k;
  if (k) {
-  var n = B.filter(function (b) { return b[1] == k; }).length;
-  if (n && !confirm("Cette matière a " + n + " cours dans ta semaine. La supprimer supprimera aussi ces cours. Continuer ?")) return;
-  delete S[k];
-  B = B.filter(function (b) { return b[1] != k; });
+  var curS = activeS(), curB = activeB();
+  var n = curB.filter(function (b) { return b[1] == k; }).length;
+  if (n && !confirm("Cette catégorie a " + n + " créneau(x) dans ta semaine. La supprimer supprimera aussi ces créneaux. Continuer ?")) return;
+  delete curS[k];
+  if (isLife()) lifeData.B = lifeData.B.filter(function (b) { return b[1] != k; });
+  else B = B.filter(function (b) { return b[1] != k; });
  }
  r.remove();
 };
+
 $("mok").onclick = function () {
+ var curS = activeS();
  [].forEach.call($("ml").children, function (r) {
-  var k = r.dataset.k, n = r.querySelector(".mn").value.trim(), e = r.querySelector(".me").value.trim() || "📚", c = r.querySelector(".mc").value;
+  var k = r.dataset.k, n = r.querySelector(".mn").value.trim(), e = r.querySelector(".me").value.trim() || (isLife() ? "🌿" : "📚"), c = r.querySelector(".mc").value;
   if (!n) return;
   if (k) {
-   var s = S[k];
+   var s = curS[k];
    if (!s) return;
    if (s[2] != c) { s[2] = c; s[3] = fgOf(c); }
    s[0] = n;
    s[1] = e;
   } else {
-   S["s" + Date.now() + Math.floor(Math.random() * 999)] = [n, e, c, fgOf(c), "bob"];
+   curS["s" + Date.now() + Math.floor(Math.random() * 999)] = [n, e, c, fgOf(c), "bob"];
   }
  });
- save();
- refreshHomeworkSubjectFilter();
+ saveActive();
  $("dM").close();
  render();
- renderHomework();
- syncGradeSubjects();
- renderGrades();
- if (!$("gradeCoefficients").hidden) renderCoefficients();
- renderRecommendations();
+ if (!isLife()) {
+  refreshHomeworkSubjectFilter();
+  renderHomework();
+  syncGradeSubjects();
+  renderGrades();
+  if (!$("gradeCoefficients").hidden) renderCoefficients();
+  renderRecommendations();
+ } else {
+  renderLifeHabits();
+  renderLifeStats();
+ }
 };
+
 $("mrs").onclick = function () {
- if (confirm("Remettre l'emploi du temps d'origine ? Tes modifications seront perdues.")) {
+ var msg = isLife()
+  ? "Vider complètement l’univers Libre & Habitudes (planning 7j, habitudes et historique) ?"
+  : "Remettre l'emploi du temps scolaire d'origine ? Tes modifications de créneaux/matières seront perdues.";
+ if (!confirm(msg)) return;
+ if (isLife()) {
+  try { localStorage.removeItem(LIFE_KEY); } catch (e) {}
+  loadLifeData();
+  $("dM").close();
+  render();
+  renderLifeHabits();
+  renderLifeStats();
+ } else {
   try { localStorage.removeItem("edt-data"); } catch (e) {}
   load();
   refreshHomeworkSubjectFilter();
@@ -872,16 +1525,7 @@ $("th").onclick = function () {
 };
 try { var sv = localStorage.getItem("edt-th"); if (sv) document.documentElement.dataset.theme = sv; } catch (e) {}
 
-/* ---- Suivi des notes semestriel & Recommandations ---- */
-/* Règle :
-   - Interrogations : illimitées -> MoyInterros
-   - Devoirs : strictement 2 max par semestre (devoir1, devoir2)
-   - Si Devoir 1, Devoir 2 ou toute interrogation manque : moyenne de la matière EN ATTENTE,
-     et la moyenne générale du semestre est également mise EN ATTENTE dès qu'une matière commencée est incomplète.
-   - Moyenne matière = (MoyInterros + Devoir 1 + Devoir 2) / 3
-   - Moyenne coefficiée = Moyenne matière * Coefficient
-   - Moyenne générale du semestre = Somme(Moyenne coefficiée) / Somme(Coefficients)
-*/
+/* ---- Suivi des notes semestriel & Recommandations (Univers Scolaire) ---- */
 var GRADE_SUBJECTS = [];
 var GRADE_DEFAULT_COEFFICIENTS = { elec: 4, est: 2, tech: 2, tp: 5, math: 4, fr: 3, ang: 2, phy: 4, eps: 2, dess: 4, philo: 1, leg: 1 };
 var GRADE_LEGACY_NAMES = {
@@ -923,12 +1567,9 @@ function syncGradeSubjects() {
  grades.forEach(function (g) { if (!seen[g.subjectId] && legacyIds.indexOf(g.subjectId) < 0) legacyIds.push(g.subjectId); });
  legacyIds.forEach(function (id) { GRADE_SUBJECTS.push({ id: id, name: GRADE_LEGACY_NAMES[id] || "Ancienne matière", coef: 1, active: false }); });
 }
-function normalizeGradeType(t) {
- return (t === "devoir1" || t === "devoir2" || t === "interro") ? t : "interro";
-}
-function normalizeSemester(s) {
- return Number(s) === 2 ? 2 : 1;
-}
+function normalizeGradeType(t) { return (t === "devoir1" || t === "devoir2" || t === "interro") ? t : "interro"; }
+function normalizeSemester(s) { return Number(s) === 2 ? 2 : 1; }
+
 function loadGrades() {
  var migrated = false;
  try {
@@ -944,7 +1585,6 @@ function loadGrades() {
   }) : [];
  } catch (e) { grades = []; }
 
- /* Assure au plus 1 Devoir 1 et 1 Devoir 2 par matière et par semestre */
  var seenDevoir = {};
  grades = grades.map(function (g) {
   if (g.type === "devoir1" || g.type === "devoir2") {
@@ -953,10 +1593,7 @@ function loadGrades() {
     var alt = g.type === "devoir1" ? "devoir2" : "devoir1";
     var altKey = g.semester + "|" + g.subjectId + "|" + alt;
     migrated = true;
-    if (!seenDevoir[altKey]) {
-     seenDevoir[altKey] = true;
-     return Object.assign({}, g, { type: alt });
-    }
+    if (!seenDevoir[altKey]) { seenDevoir[altKey] = true; return Object.assign({}, g, { type: alt }); }
     return Object.assign({}, g, { type: "interro" });
    }
    seenDevoir[key] = true;
@@ -1020,17 +1657,8 @@ function computeSubjectStats(subjectId, semester) {
  var average = complete ? (moyInterros + d1 + d2) / 3 : null;
  var weighted = complete ? average * coef : null;
  return {
-  subjectId: subjectId,
-  coef: coef,
-  interros: interros,
-  moyInterros: moyInterros,
-  d1: d1,
-  d2: d2,
-  hasAny: hasAny,
-  missing: missing,
-  complete: complete,
-  average: average,
-  weighted: weighted
+  subjectId: subjectId, coef: coef, interros: interros, moyInterros: moyInterros,
+  d1: d1, d2: d2, hasAny: hasAny, missing: missing, complete: complete, average: average, weighted: weighted
  };
 }
 
@@ -1040,66 +1668,32 @@ function computeSemesterSummary(semester) {
  var rows = activeSubjects.map(function (s) { return Object.assign({ name: s.name }, computeSubjectStats(s.id, sem)); });
  var startedIncomplete = rows.filter(function (r) { return r.hasAny && !r.complete; });
  var completeRows = rows.filter(function (r) { return r.complete; });
- var missingDevoirRows = rows.filter(function (r) { return r.hasAny && (r.d1 === null || r.d2 === null); });
+ var status = "empty", generalAverage = null, totalWeighted = 0, totalCoef = 0;
 
- var status = "empty";
- var generalAverage = null;
- var totalWeighted = 0;
- var totalCoef = 0;
-
- if (startedIncomplete.length > 0) {
-  status = "waiting";
- } else if (completeRows.length > 0) {
-  completeRows.forEach(function (r) {
-   if (r.coef > 0) {
-    totalWeighted += r.weighted;
-    totalCoef += r.coef;
-   }
-  });
-  if (totalCoef > 0) {
-   generalAverage = totalWeighted / totalCoef;
-   status = "ok";
-  } else {
-   status = "waiting";
-  }
+ if (startedIncomplete.length > 0) status = "waiting";
+ else if (completeRows.length > 0) {
+  completeRows.forEach(function (r) { if (r.coef > 0) { totalWeighted += r.weighted; totalCoef += r.coef; } });
+  if (totalCoef > 0) { generalAverage = totalWeighted / totalCoef; status = "ok"; }
+  else status = "waiting";
  }
-
  return {
-  semester: sem,
-  rows: rows,
-  activeCount: activeSubjects.length,
-  completeCount: completeRows.length,
-  startedIncomplete: startedIncomplete,
-  missingDevoirRows: missingDevoirRows,
-  totalWeighted: totalWeighted,
-  totalCoef: totalCoef,
-  generalAverage: generalAverage,
-  status: status
+  semester: sem, rows: rows, activeCount: activeSubjects.length, completeCount: completeRows.length,
+  startedIncomplete: startedIncomplete, totalWeighted: totalWeighted, totalCoef: totalCoef, generalAverage: generalAverage, status: status
  };
 }
 
-function gradeTypeLabel(type) {
- if (type === "devoir1") return "Devoir 1";
- if (type === "devoir2") return "Devoir 2";
- return "Interrogation";
-}
+function gradeTypeLabel(type) { return type === "devoir1" ? "Devoir 1" : type === "devoir2" ? "Devoir 2" : "Interrogation"; }
 
 function renderGrades() {
  syncGradeSubjects();
  $("gradeSemester").value = String(activeSemester);
  $("recSemester").value = String(activeSemester);
-
  var summary = computeSemesterSummary(activeSemester);
  var semGrades = grades.filter(function (g) { return normalizeSemester(g.semester) === activeSemester; });
  var interroCount = semGrades.filter(function (g) { return g.type === "interro"; }).length;
  var devoirCount = semGrades.filter(function (g) { return g.type === "devoir1" || g.type === "devoir2"; }).length;
 
- var avgDisplay = summary.status === "ok"
-  ? fmtGrade(summary.generalAverage)
-  : summary.status === "waiting"
-   ? "En attente"
-   : "—";
-
+ var avgDisplay = summary.status === "ok" ? fmtGrade(summary.generalAverage) : summary.status === "waiting" ? "En attente" : "—";
  var avgSub = summary.status === "ok"
   ? (summary.completeCount === summary.activeCount
    ? "Officielle · " + fmtPoints(summary.totalWeighted) + " pts / " + summary.totalCoef + " coef."
@@ -1166,8 +1760,7 @@ function renderRecommendations() {
    if (st.d2 !== null) partialNotes.push("Devoir 2 : " + fmtGrade(st.d2));
    var earlyWarn = ((st.moyInterros !== null && st.moyInterros < 10) || (st.d1 !== null && st.d1 < 10) || (st.d2 !== null && st.d2 < 10));
    cards.push({
-    rank: earlyWarn ? 0 : 2,
-    coef: st.coef,
+    rank: earlyWarn ? 0 : 2, coef: st.coef,
     title: (earlyWarn ? "⚠️ Vigilance précoce en " : "⏳ En attente en ") + st.name + " (coef. " + st.coef + ")",
     body: "Moyenne en attente — manque : " + st.missing.join(", ") + ". Notes actuelles : " + partialNotes.join(" · ") + "." + (earlyWarn ? " Tes premières notes sont sous 10/20 : révise dès maintenant avant le prochain devoir !" : " Complète les évaluations manquantes pour calculer la moyenne officielle.")
    });
@@ -1181,26 +1774,11 @@ function renderRecommendations() {
     : st.moyInterros < 10 && moyDevoirs >= 10
      ? "Tes devoirs (" + fmtGrade(moyDevoirs) + ") tiennent la route, mais ta moyenne d'interros (" + fmtGrade(st.moyInterros) + ") te pénalise : relis tes cours plus régulièrement après chaque séance."
      : "Moy. interros : " + fmtGrade(st.moyInterros) + ", Devoir 1 : " + fmtGrade(st.d1) + ", Devoir 2 : " + fmtGrade(st.d2) + ". Reprends les bases et fais des exercices ciblés chaque semaine.";
-   cards.push({
-    rank: 0,
-    coef: st.coef,
-    title: "🔴 Renforcer " + st.name + " (" + fmtGrade(st.average) + " · coef. " + st.coef + ")",
-    body: detail
-   });
+   cards.push({ rank: 0, coef: st.coef, title: "🔴 Renforcer " + st.name + " (" + fmtGrade(st.average) + " · coef. " + st.coef + ")", body: detail });
   } else if (st.average < 12) {
-   cards.push({
-    rank: 1,
-    coef: st.coef,
-    title: "🟠 Consolider " + st.name + " (" + fmtGrade(st.average) + " · coef. " + st.coef + ")",
-    body: "Moy. interros : " + fmtGrade(st.moyInterros) + " · Devoirs : " + fmtGrade(st.d1) + " et " + fmtGrade(st.d2) + ". Tu peux facilement passer au-dessus de 12/20 en corrigeant les erreurs de tes devoirs."
-   });
+   cards.push({ rank: 1, coef: st.coef, title: "🟠 Consolider " + st.name + " (" + fmtGrade(st.average) + " · coef. " + st.coef + ")", body: "Moy. interros : " + fmtGrade(st.moyInterros) + " · Devoirs : " + fmtGrade(st.d1) + " et " + fmtGrade(st.d2) + ". Tu peux facilement passer au-dessus de 12/20 en corrigeant les erreurs de tes devoirs." });
   } else if (st.average >= 15) {
-   cards.push({
-    rank: 3,
-    coef: st.coef,
-    title: "🟢 Entretenir " + st.name + " (" + fmtGrade(st.average) + " · coef. " + st.coef + ")",
-    body: "Très bon équilibre entre interrogations (" + fmtGrade(st.moyInterros) + ") et devoirs (" + fmtGrade(st.d1) + " / " + fmtGrade(st.d2) + "). Ce fort résultat rapporte " + fmtPoints(st.weighted) + " points pondérés."
-   });
+   cards.push({ rank: 3, coef: st.coef, title: "🟢 Entretenir " + st.name + " (" + fmtGrade(st.average) + " · coef. " + st.coef + ")", body: "Très bon équilibre entre interrogations (" + fmtGrade(st.moyInterros) + ") et devoirs (" + fmtGrade(st.d1) + " / " + fmtGrade(st.d2) + "). Ce fort résultat rapporte " + fmtPoints(st.weighted) + " points pondérés." });
   }
  });
 
@@ -1217,11 +1795,8 @@ function renderRecommendations() {
  }
 
  var html = "<div class='grade-panel'><h3>Ton bilan · Semestre " + activeSemester + "</h3><p>" + bilanText + "</p></div>";
- if (cards.length) {
-  html += cards.map(function (x) { return '<article class="rec-card"><strong>' + esc(x.title) + '</strong><p>' + esc(x.body) + '</p></article>'; }).join("");
- } else if (summary.status === "ok") {
-  html += "<div class='grade-empty'>Toutes tes matières complètes du Semestre " + activeSemester + " sont entre 12/20 et 15/20. Continue ainsi ! ✨</div>";
- }
+ if (cards.length) html += cards.map(function (x) { return '<article class="rec-card"><strong>' + esc(x.title) + '</strong><p>' + esc(x.body) + '</p></article>'; }).join("");
+ else if (summary.status === "ok") html += "<div class='grade-empty'>Toutes tes matières complètes du Semestre " + activeSemester + " sont entre 12/20 et 15/20. Continue ainsi ! ✨</div>";
  $("recommendations").innerHTML = html;
 }
 
@@ -1231,21 +1806,14 @@ function updateDevoirSlotOptions(subjectId, editingGrade) {
  var sem = activeSemester;
  var taken1 = grades.some(function (g) { return g.subjectId === subjectId && normalizeSemester(g.semester) === sem && g.type === "devoir1" && (!editingGrade || g.id !== editingGrade.id); });
  var taken2 = grades.some(function (g) { return g.subjectId === subjectId && normalizeSemester(g.semester) === sem && g.type === "devoir2" && (!editingGrade || g.id !== editingGrade.id); });
-
  slotSel.options[0].textContent = taken1 ? "Devoir 1 (déjà saisi)" : "Devoir 1";
  slotSel.options[0].disabled = taken1;
  slotSel.options[1].textContent = taken2 ? "Devoir 2 (déjà saisi)" : "Devoir 2";
  slotSel.options[1].disabled = taken2;
-
- if (editingGrade && (editingGrade.type === "devoir1" || editingGrade.type === "devoir2")) {
-  slotSel.value = editingGrade.type;
- } else if (!taken1) {
-  slotSel.value = "devoir1";
- } else if (!taken2) {
-  slotSel.value = "devoir2";
- } else {
-  slotSel.value = "devoir1";
- }
+ if (editingGrade && (editingGrade.type === "devoir1" || editingGrade.type === "devoir2")) slotSel.value = editingGrade.type;
+ else if (!taken1) slotSel.value = "devoir1";
+ else if (!taken2) slotSel.value = "devoir2";
+ else slotSel.value = "devoir1";
 }
 
 function openGradeModal(mode, editGrade) {
@@ -1276,43 +1844,57 @@ function openGradeModal(mode, editGrade) {
  } else {
   $("gradeDialogTitle").textContent = isDevoir ? "＋ Ajouter un devoir (Sem. " + activeSemester + ")" : "＋ Ajouter une note d'interrogation (Sem. " + activeSemester + ")";
  }
-
- if (isDevoir) {
-  updateDevoirSlotOptions(gradeSelect.value, editGrade);
- }
+ if (isDevoir) updateDevoirSlotOptions(gradeSelect.value, editGrade);
  $("gradeDialog").showModal();
 }
 
+/* ---- Navigation multi-univers ---- */
 function showAppView(view) {
- var hw = view === "homework", gr = view === "grades", rc = view === "recommend";
- $("scheduleView").hidden = hw || gr || rc;
- $("homeworkView").hidden = !hw;
- $("gradesView").hidden = !gr;
- $("recommendView").hidden = !rc;
- [["navSchedule", !hw && !gr && !rc], ["navHomework", hw], ["navGrades", gr], ["navRecs", rc]].forEach(function (x) {
-  $(x[0]).setAttribute("aria-pressed", x[1] ? "true" : "false");
+ currentView = view;
+ var views = {
+  schedule: "scheduleView",
+  homework: "homeworkView",
+  grades: "gradesView",
+  recommend: "recommendView",
+  lifeHabits: "lifeHabitsView",
+  lifeStats: "lifeStatsView"
+ };
+ Object.keys(views).forEach(function (k) {
+  var el = $(views[k]);
+  if (el) el.hidden = k !== view;
  });
- if (hw) { refreshHomeworkSubjectFilter(); renderHomework(); }
- if (gr) renderGrades();
- if (rc) renderRecommendations();
+
+ var navMap = {
+  navSchedule: view === "schedule",
+  navHomework: view === "homework",
+  navGrades: view === "grades",
+  navRecs: view === "recommend",
+  navLifeSchedule: view === "schedule",
+  navLifeHabits: view === "lifeHabits",
+  navLifeStats: view === "lifeStats"
+ };
+ Object.keys(navMap).forEach(function (id) {
+  var btn = $(id);
+  if (btn) btn.setAttribute("aria-pressed", navMap[id] ? "true" : "false");
+ });
+
+ if (view === "homework") { refreshHomeworkSubjectFilter(); renderHomework(); }
+ if (view === "grades") renderGrades();
+ if (view === "recommend") renderRecommendations();
+ if (view === "lifeHabits") renderLifeHabits();
+ if (view === "lifeStats") renderLifeStats();
 }
 
 $("navSchedule").onclick = function () { showAppView("schedule"); };
 $("navHomework").onclick = function () { showAppView("homework"); };
 $("navGrades").onclick = function () { showAppView("grades"); };
 $("navRecs").onclick = function () { showAppView("recommend"); };
+$("navLifeSchedule").onclick = function () { showAppView("schedule"); };
+$("navLifeHabits").onclick = function () { showAppView("lifeHabits"); };
+$("navLifeStats").onclick = function () { showAppView("lifeStats"); };
 
-$("gradeSemester").onchange = function () {
- activeSemester = normalizeSemester(this.value);
- renderGrades();
- renderRecommendations();
-};
-$("recSemester").onchange = function () {
- activeSemester = normalizeSemester(this.value);
- renderGrades();
- renderRecommendations();
-};
-
+$("gradeSemester").onchange = function () { activeSemester = normalizeSemester(this.value); renderGrades(); renderRecommendations(); };
+$("recSemester").onchange = function () { activeSemester = normalizeSemester(this.value); renderGrades(); renderRecommendations(); };
 $("gradeAddInterro").onclick = function () { openGradeModal("interro", null); };
 $("gradeAddDevoir").onclick = function () { openGradeModal("devoir", null); };
 $("gradeSubject").onchange = function () {
@@ -1328,43 +1910,22 @@ $("gradeForm").onsubmit = function (e) {
  var rawVal = $("gradeValue").value.trim(), v = Number(rawVal), sub = $("gradeSubject").value, title = $("gradeTitle").value.trim(), date = $("gradeDate").value;
  if (!title) { $("gradeError").textContent = "Indique l’intitulé de l’évaluation."; return; }
  if (rawVal === "" || !Number.isFinite(v) || v < 0 || v > 20) { $("gradeError").textContent = "La note doit être comprise entre 0 et 20."; return; }
-
  var old = gradeEditId ? grades.find(function (x) { return x.id === gradeEditId; }) : null;
  var type = activeGradeMode === "devoir" ? $("gradeSlot").value : "interro";
-
  if (type === "devoir1" || type === "devoir2") {
   var existingDevoirs = grades.filter(function (g) {
    return g.subjectId === sub && normalizeSemester(g.semester) === activeSemester && (g.type === "devoir1" || g.type === "devoir2") && (!old || g.id !== old.id);
   });
-  if (existingDevoirs.length >= 2) {
-   $("gradeError").textContent = "Maximum 2 devoirs par matière et par semestre atteint. Modifie ou supprime un devoir existant.";
-   return;
-  }
-  var slotConflict = existingDevoirs.some(function (g) { return g.type === type; });
-  if (slotConflict) {
-   $("gradeError").textContent = gradeTypeLabel(type) + " est déjà saisi pour cette matière ce semestre.";
-   return;
-  }
+  if (existingDevoirs.length >= 2) { $("gradeError").textContent = "Maximum 2 devoirs par matière et par semestre atteint. Modifie ou supprime un devoir existant."; return; }
+  if (existingDevoirs.some(function (g) { return g.type === type; })) { $("gradeError").textContent = gradeTypeLabel(type) + " est déjà saisi pour cette matière ce semestre."; return; }
  }
-
  var item = {
   id: old ? old.id : ("gr-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7)),
   semester: old ? normalizeSemester(old.semester) : activeSemester,
-  subjectId: sub,
-  type: type,
-  value: v,
-  title: title,
-  date: date
+  subjectId: sub, type: type, value: v, title: title, date: date
  };
- if (old) grades[grades.indexOf(old)] = item;
- else grades.push(item);
-
- if (saveGrades()) {
-  $("gradeDialog").close();
-  gradeEditId = null;
-  renderGrades();
-  renderRecommendations();
- }
+ if (old) grades[grades.indexOf(old)] = item; else grades.push(item);
+ if (saveGrades()) { $("gradeDialog").close(); gradeEditId = null; renderGrades(); renderRecommendations(); }
 };
 
 $("gradeList").onclick = function (e) {
@@ -1376,12 +1937,7 @@ $("gradeList").onclick = function (e) {
  }
  if (del) {
   var id = del.dataset.deleteGrade;
-  if (confirm("Supprimer cette note ?")) {
-   grades = grades.filter(function (x) { return x.id !== id; });
-   saveGrades();
-   renderGrades();
-   renderRecommendations();
-  }
+  if (confirm("Supprimer cette note ?")) { grades = grades.filter(function (x) { return x.id !== id; }); saveGrades(); renderGrades(); renderRecommendations(); }
  }
 };
 
@@ -1389,34 +1945,27 @@ $("gradeSubjectsToggle").onclick = function () {
  $("gradeCoefficients").hidden = !$("gradeCoefficients").hidden;
  if (!$("gradeCoefficients").hidden) renderCoefficients();
 };
-
 $("gradeCoeffSave").onclick = function () {
  var inputs = $("gradeCoefficientList").querySelectorAll("[data-coef]"), next = {};
  for (var i = 0; i < inputs.length; i++) {
   var n = Number(inputs[i].value);
-  if (!Number.isFinite(n) || n < 0 || n > 20) {
-   alert("Chaque coefficient doit être compris entre 0 et 20.");
-   return;
-  }
+  if (!Number.isFinite(n) || n < 0 || n > 20) { alert("Chaque coefficient doit être compris entre 0 et 20."); return; }
   next[inputs[i].dataset.coef] = n;
  }
- try {
-  localStorage.setItem(COEF_KEY, JSON.stringify(next));
-  gradeCoefficients = next;
-  renderGrades();
-  renderRecommendations();
-  alert("Coefficients enregistrés.");
- } catch (e) {
-  alert("Impossible d'enregistrer les coefficients.");
- }
+ try { localStorage.setItem(COEF_KEY, JSON.stringify(next)); gradeCoefficients = next; renderGrades(); renderRecommendations(); alert("Coefficients enregistrés."); }
+ catch (e) { alert("Impossible d'enregistrer les coefficients."); }
 };
 
-/* ---- Initialisation ---- */
+/* ============================================================================
+   PARTIE 3 — INITIALISATION FINALE
+   ============================================================================ */
+try { loadMeta(); } catch (e) { reportAppError(e && e.message ? e.message : e); }
 try { load(); } catch (e) { reportAppError(e && e.message ? e.message : e); }
+try { loadLifeData(); } catch (e) { reportAppError(e && e.message ? e.message : e); }
 try { loadHomework(); } catch (e) { reportAppError(e && e.message ? e.message : e); }
 try { loadGrades(); } catch (e) { reportAppError(e && e.message ? e.message : e); }
 try { refreshHomeworkSubjectFilter(); } catch (e) { reportAppError(e && e.message ? e.message : e); }
-try { render(); } catch (e) { reportAppError(e && e.message ? e.message : e); }
+try { applyUniverse(meta.universe); } catch (e) { reportAppError(e && e.message ? e.message : e); }
 try { renderHomework(); } catch (e) { reportAppError(e && e.message ? e.message : e); }
 try { setDisplayMode(mobileQuery); } catch (e) { reportAppError(e && e.message ? e.message : e); }
 setInterval(function () { try { tick(); } catch (e) { reportAppError(e && e.message ? e.message : e); } }, 30000);

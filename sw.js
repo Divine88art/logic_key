@@ -1,4 +1,4 @@
-const CACHE_NAME = "edt-v7";
+const CACHE_NAME = "edt-v8";
 const ASSETS = [
   "./",
   "./index.html",
